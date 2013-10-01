@@ -38,20 +38,12 @@ configuration:
         required_fields: [version,SEQ]
         optional_fields: [name,node,width,height]
 
-    # publish_render_template:
-    #     type: template
-    #     required_fields: [version]
-    #     optional_fields: [name,TankType]
-
-    # tank_type:
-    #     type: tank_type
-
 # the Shotgun fields that this app needs in order to operate correctly
 requires_shotgun_fields:
 
 # More verbose description of this item 
-display_name: "Alembic Output Node"
-description: "Support for the Toolkit Alembic output node in Houdini."
+display_name: "Mantra Render Output Node"
+description: "Support for the Toolkit Mantra render output node in Houdini."
 
 # Required minimum versions for this item to run
 requires_shotgun_version:
