@@ -31,14 +31,18 @@ class ToolkitMantraNodeHandler(object):
                 
         return work_fields
 
-    def compute_path(self, node):
+    def compute_path(self, node, template_name="work_render_template"):
         # Get relevant fields from the scene filename and contents
         work_file_fields = self._get_hipfile_fields()
         if not work_file_fields:
             raise sgtk.TankError("This Houdini file is not a Shotgun Toolkit work file!")
 
         # Get the templates from the app
-        template = self._app.get_template("work_render_template")
+        template = self._app.get_template(template_name)
+
+        if not template:
+            msg = 'No Template provided for "{0}"'
+            raise sgtk.TankError(msg.format(template_name))
 
         # create fields dict with all the metadata
         fields = {}
@@ -59,12 +63,12 @@ class ToolkitMantraNodeHandler(object):
             fields["height"] = cam_node.parm("resy").eval()
 
         fields.update(self._app.context.as_template_fields(template))
-        
+
         path = template.apply_fields(fields)
 
         # TODO: Move this out to some sort of pre-render callback
-        out_dir = os.path.dirname(path)
-        self._app.ensure_folder_exists(out_dir)
+        # out_dir = os.path.dirname(path)
+        # self._app.ensure_folder_exists(out_dir)
 
         path = path.replace(os.path.sep, "/")
 

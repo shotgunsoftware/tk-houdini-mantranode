@@ -38,6 +38,28 @@ configuration:
         required_fields: [version,SEQ]
         optional_fields: [name,node,width,height]
 
+    work_cache_template:
+        type: template
+        description: >
+            A reference to a template which locates a Houdini ifd cache on disk.
+            This template must include the version and extension tokens where the extension
+            token will be replaced with a string representing the extension of the file format
+            selected in Houdini for output. The node token is optional and is the name
+            of the Houdini output node.
+        required_fields: [version,SEQ]
+        optional_fields: [name,node,width,height]
+
+    work_deep_render_template:
+        type: template
+        description: >
+            A reference to a template which locates a Houdini deep render on disk.
+            This template must include the version and extension tokens where the extension
+            token will be replaced with a string representing the extension of the file format
+            selected in Houdini for output. The node token is optional and is the name
+            of the Houdini output node.
+        required_fields: [version,SEQ]
+        optional_fields: [name,node,width,height]
+
 # the Shotgun fields that this app needs in order to operate correctly
 requires_shotgun_fields:
 
