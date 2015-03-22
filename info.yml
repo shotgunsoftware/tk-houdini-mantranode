@@ -19,6 +19,13 @@ configuration:
             A human readable name to display in the HDA to allow selection of this
             set of configuration options in Houdini.
 
+    default_node_name:
+        type: str
+        description: >
+            A default name the node will be named after when it is created in Houdini.
+            Allowed characters: letters, numbers, periods, dashes, or underscores.
+        default_value: sgtk_mantra
+
     work_file_template:
         type: template
         description: >
