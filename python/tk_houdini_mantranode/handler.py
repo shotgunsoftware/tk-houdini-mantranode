@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -8,420 +8,412 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
-# IMPORT STANDARD MODULES
+# built-ins
 import os
 import sys
 
-# IMPORT THIRD PARTY MODULES
+# houdini
 import hou
+
+# toolkit
 import sgtk
 
 
-class ToolkitMantraNodeHandler(object):
-
-    SG_NODE_CLASS = "sgtk_mantra"
-    PARM_CONFIG = 'sgtk__config'
-
-    def __init__(self, app):
-        self._app = app
-        self._script_template = self._app.get_template("template_script_work")
-
-        # cache the profiles:
-        self._profile_names = []
-        self._profiles = {}
-        for profile in self._app.get_setting("mantra_nodes", []):
-            name = profile["name"]
-            if name in self._profiles:
-                msg = """Configuration contains multiple Mantra Node profiles
-                called '%s'!  Only the first will be available""" % name
-                self._app.log_warning(msg)
-                continue
-
-            self._profile_names.append(name)
-            self._profiles[name] = profile
+class TkMantraNodeHandler(object):
+    """Handle Tk Mantra node operations and callbacks."""
 
     ############################################################################
-    # Properties
+    # Class data
 
-    @property
-    def profile_names(self):
-        """
-        Return the list of available profile names.
+    # mostly a collection of strings that are reused throughout the handler.  
 
-        :returns: Available profile names.
-        :rtype: List
-        """
-        return self._profile_names
+    HOU_MANTRA_NODE_TYPE = "ifd"
+    """Houdini type for mantra node."""
+
+    NODE_OUTPUT_PATH_PARM = "sgtk_vm_filename"
+
+    TK_EXTRA_PLANE_COUNT_PARM = 'vm_numaux'
+    """Parameter that stores the number of aov planes."""
+
+    TK_EXTRA_PLANE_TEMPLATE_MAPPING = {
+        'sgtk_vm_filename_plane#': 'output_extra_plane_template'
+    }
+    """Maps additional plane parameter names to output template names"""
+
+    TK_EXTRA_PLANES_NAME = "sgtk_aov_name_%s"
+    """Placeholder used to format extra plane names"""
+
+    TK_INIT_PARM_NAME = "sgtk_initialized"
+    """Parameter used to store whether a tk mantra node has been initialized."""
+
+    TK_HIP_PATH_PARM_NAME = 'sgtk_hip_path'
+    """Holds cached path to the hip file."""
+
+    TK_MANTRA_NODE_TYPE = "sgtk_mantra"
+    """The clase of node as defined in Houdini for the Mantra nodes."""
+
+    TK_OUTPUT_PROFILE_PARM = "sgtk_output_profile" 
+    """The name of the parameter that stores the current output profile."""
+
+    TK_OUTPUT_PROFILE_NAME_KEY = "tk_output_profile_name"
+    """The key in the user data that stores the output profile name."""
+
+    TK_RENDER_TEMPLATE_MAPPING = {
+        "sgtk_soho_diskfile": "output_ifd_template",
+        "sgtk_vm_dcmfilename": "output_dcm_template",
+        "sgtk_vm_filename": "output_render_template",
+    }
+    """Mapping between tk mantra parms and corresponding render templates."""
+
+    TK_RESET_PARM_NAMES = [
+        "soho_compression",
+        "soho_mkpath",
+        "vm_device",
+        "vm_image_exr_compression",
+        "vm_image_jpeg_quality",
+        "vm_image_tiff_compression",
+    ]
+    """The default parameters to reset when the profile changes."""
+
+    TK_DEFAULT_UPDATE_PARM_MAPPING = {     
+        "sgtk_soho_diskfile": "soho_diskfile",
+        "sgtk_vm_dcmfilename": "vm_dcmfilename",
+        "sgtk_vm_picture": "vm_picture",
+    }
+    """Map tk parms to mantra node parms."""
 
     ############################################################################
-    # Public methods
+    # Class methods
 
-    @staticmethod
-    def get_nodes():
-        """
-        Returns a list of all SGTK Mantra nodes.
+    @classmethod
+    def convert_back_to_tk_mantra_nodes(cls, app):
+        """Convert Mantra nodes back to Toolkit Mantra nodes.
 
-        :returns: All SGTK Mantra nodes.
-        :rtype: List
-        """
-        node_class = ToolkitMantraNodeHandler.SG_NODE_CLASS
-        rop_nodes = hou.nodeType(hou.ropNodeTypeCategory(),
-                                 node_class).instances()
-        return rop_nodes
+        :param app: The calling Toolkit Application
 
-    @staticmethod
-    def get_node_name(node):
-        """
-        Return the name for the specified node.
+        Note: only converts nodes that had previously been Toolkit Mantra
+        nodes.
 
-        :arg node: Node to return name of
-        :type node: hou.Node
-        :returns: Name of node.
-        :rtype: String
-        """
-        return node.name()
-
-    @staticmethod
-    def get_node_profile_name(node):
-        """
-        Return the name of the profile the specified node is using.
-
-        :arg node: Node to return selected profile name of
-        :type node: hou.Node
-        :returns: Name of profile.
-        :rtype: String
-        """
-        config_parm = node.parm(ToolkitMantraNodeHandler.PARM_CONFIG)
-        return config_parm.menuLabels()[config_parm.eval()]
-
-    def get_render_template(self, node):
-        """
-        Returns the associated render template obj for a node.
-
-        :arg node: Node to return selected profile name of
-        :type node: hou.Node
-        :returns: Render template.
-        :rtype: SGTK Template
-        """
-        return self.__get_template(node, "template_render")
-
-    def get_files_on_disk(self, node):
-        """
-        Called from render publisher & UI (via exists_on_disk)
-        Returns the files on disk associated with this node
-
-        :arg node: Node to return files for.
-        :type node: hou.Node
-        :returns: Path.
-        :rtype: String
-        """
-        return self.__get_files_on_disk(node)
-
-    def reset_render_path(self, node):
-        """
-        Reset the render path of the specified node.  This
-        will force the render path to be updated based on
-        the current script path and configuraton
-
-        :arg node: Node to reset render paths.
-        :type node: hou.Node
-        """
-        self.__update_render_path(node)
-        self.__set_initial_output_picture(node)
-        self.__update_parms(node)
-
-    def convert_sg_to_mantra_nodes(self):
-        """
-        Utility function to convert all Shotgun Write nodes to regular
-        Mantra nodes.
-
-        # Example use:
-        import sgtk
-        eng = sgtk.platform.current_engine()
-        app = eng.apps["tk-houdini-mantranode"]
-        # Convert Shotgun write nodes to Mantra nodes:
-        app.convert_to_mantra_nodes()
         """
 
-        # get write nodes:
-        sg_nodes = self.get_nodes()
-        for sg_n in sg_nodes:
+        # get all instances of the built-in mantra nodes
+        mantra_nodes = hou.nodeType(
+            hou.ropNodeTypeCategory(), cls.HOU_MANTRA_NODE_TYPE).instances()
 
-            node_name = sg_n.name()
-            node_pos = sg_n.position()
+        if not mantra_nodes:
+            app.log_debug("No Mantra Nodes found for conversion.")
+            return
+        
+        # iterate over all the mantra nodes and attempt to convert them
+        for mantra_node in mantra_nodes:
 
-            # create new regular Write node:
-            new_n = sg_n.parent().createNode("ifd")
+            # get the user data dictionary stored on the node
+            user_dict = mantra_node.userDataDict()
 
-            # copy across any knob values from the internal write node.
-            # parmTuples
-            exclude = [f for f in sg_n.parms() if f.name().startswith('sgtk__')]
-            self.__copy_parm_values(sg_n, new_n, exclude)
+            # get the output_profile from the dictionary
+            tk_output_profile_name = user_dict.get(
+                cls.TK_OUTPUT_PROFILE_NAME_KEY)
 
-            # Store Toolkit specific information on write node
-            # so that we can reverse this process later
-
-            # Profile Name
-            new_n.setUserData('tk_profile_name',
-                              self.get_node_profile_name(sg_n))
-
-            # AOV Names
-            nums = self.__get_all_extra_plane_numbers(sg_n)
-            for num in nums:
-                parm_name = 'sgtk__aov_name{0}'.format(num)
-                user_data_name = 'tk_aov_name{0}'.format(num)
-                new_n.setUserData(user_data_name,
-                                  sg_n.parm(parm_name).eval())
-
-            # Copy inputs and move outputs
-            self.__copy_inputs_to_node(sg_n, new_n)
-            self.__move_outputs_to_node(sg_n, new_n)
-            self.__copy_color(sg_n, new_n)
-
-            # delete original node:
-            sg_n.destroy()
-
-            # rename new node:
-            new_n.setName(node_name)
-            new_n.setPosition(node_pos)
-
-    def convert_mantra_to_sg_nodes(self):
-        """
-        Utility function to convert all Mantra nodes to Shotgun
-        Mantra nodes (only converts Mantra nodes that were previously
-        Shotgun Mantra nodes)
-
-        # Example use:
-        import sgtk
-        eng = sgtk.platform.current_engine()
-        app = eng.apps["tk-houdini-mantranode"]
-        # Convert previously converted Mantra nodes back to
-        # Shotgun Mantra nodes:
-        app.convert_from_write_nodes()
-        """
-
-        # get write nodes:
-        nodes = hou.nodeType(hou.ropNodeTypeCategory(), 'ifd').instances()
-        for n in nodes:
-
-            user_dict = n.userDataDict()
-
-            profile = user_dict.get('tk_profile_name')
-
-            if not profile:
-                # can't convert to a Shotgun Mantra Node
-                # as we have missing parameters!
+            if not tk_output_profile_name:
+                app.log_warning(
+                    "Mantra node '%s' does not have an output profile name. "
+                    "Can't convert to Tk Mantra node. Continuing." %
+                    (mantra_node.name(),)
+                )
                 continue
-
-            node_name = n.name()
-            node_pos = n.position()
 
             # create new Shotgun Write node:
-            node_class = ToolkitMantraNodeHandler.SG_NODE_CLASS
-            new_sg_n = n.parent().createNode(node_class)
+            tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
+            tk_mantra_node = mantra_node.parent().createNode(tk_node_type)
 
-            # set the profile
+            # find the index of the stored name on the new tk mantra node
+            # and set that item in the menu.
             try:
-                parm = new_sg_n.parm(ToolkitMantraNodeHandler.PARM_CONFIG)
-                index = parm.menuLabels().index(profile)
-                parm.set(index)
+                output_profile_parm = tk_mantra_node.parm(
+                    TkMantraNodeHandler.TK_OUTPUT_PROFILE_PARM)
+                output_profile_index = output_profile_parm.menuLabels().index(
+                    tk_output_profile_name)
+                output_profile_parm.set(output_profile_index)
             except ValueError:
-                pass
+                app.log_warning("No output profile found named: %s" % 
+                    (tk_output_profile_name,))
 
-            # copy across and knob values from the internal write node.
-            exclude = []
-            self.__copy_parm_values(n, new_sg_n, exclude)
+            # copy over all parameter values except the output path 
+            _copy_parm_values(mantra_node, tk_mantra_node, excludes=[])
 
-            # explicitly copy some settings to the new Shotgun Mantra Node:
-            # AOV Names
-            nums = self.__get_all_extra_plane_numbers(n)
-            for num in nums:
-                parm_name = 'sgtk__aov_name{0}'.format(num)
-                user_data_name = 'tk_aov_name{0}'.format(num)
-                aov_name = user_dict.get(user_data_name)
-                new_sg_n.parm(parm_name).set(aov_name)
+            # explicitly copy AOV settings to the new tk mantra node
+            plane_numbers = _get_extra_plane_numbers(mantra_node)
+            for plane_number in plane_numbers:
+                plane_parm_name = self.TK_EXTRA_PLANES_NAME % (plane_number,)
+                aov_name = user_dict.get(plane_parm_name)
+                tk_mantra_node.parm(plane_parm_name).set(aov_name)
 
-            # Copy inputs and move outputs
-            self.__copy_inputs_to_node(n, new_sg_n)
-            self.__move_outputs_to_node(n, new_sg_n)
-            self.__copy_color(n, new_sg_n)
+            # copy the inputs and move the outputs
+            _copy_inputs(mantra_node, tk_mantra_node)
+            _move_outputs(mantra_node, tk_mantra_node)
 
-            # delete original node:
-            n.destroy()
+            # make the new node the same color. the profile will set a color, 
+            # but do this just in case the user changed the color manually
+            # prior to the conversion.
+            tk_mantra_node.setColor(mantra_node.color())
 
-            # rename new node:
-            new_sg_n.setName(node_name)
-            new_sg_n.setPosition(node_pos)
+            # remember the name and position of the original mantra node
+            mantra_node_name = mantra_node.name()
+            mantra_node_pos = mantra_node.position()
+
+            # destroy the original mantra node
+            mantra_node.destroy()
+
+            # name and reposition the new, regular mantra node to match the
+            # original
+            tk_mantra_node.setName(mantra_node_name)
+            tk_mantra_node.setPosition(mantra_node_pos)
+
+            app.log_debug("Converted: Mantra node '%s' to TK Mantra node."
+                % (mantra_node_name,))
+
+
+    @classmethod
+    def convert_to_regular_mantra_nodes(cls, app):
+        """Convert Toolkit Mantra nodes to regular Mantra nodes.
+
+        :param app: The calling Toolkit Application
+
+        """
+
+        # get all instances of tk mantra nodes
+        tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
+        tk_mantra_nodes = hou.nodeType(
+            hou.ropNodeTypeCategory(), tk_node_type).instances()
+
+        if not tk_mantra_nodes:
+            app.log_debug("No Toolkit Mantra Nodes found for conversion.")
+            return
+
+        for tk_mantra_node in tk_mantra_nodes:
+
+
+            # create a new, regular Mantra node
+            mantra_node = tk_mantra_node.parent().createNode(
+                cls.HOU_MANTRA_NODE_TYPE)
+
+            # copy across knob values
+            exclude_parms = [parm for parm in tk_mantra_node.parms() 
+                if parm.name().startswith("sgtk_")]
+            _copy_parm_values(tk_mantra_node, mantra_node,
+                excludes=exclude_parms)
+
+            # store the mantra output profile name in the user data so that we
+            # can retrieve it later.
+            output_profile_parm = tk_mantra_node.parm(
+                cls.TK_OUTPUT_PROFILE_PARM)
+            tk_output_profile_name = \
+                output_profile_parm.menuLabels()[output_profile_parm.eval()]
+            mantra_node.setUserData(cls.TK_OUTPUT_PROFILE_NAME_KEY, 
+                tk_output_profile_name)
+
+            # store AOV info on the new node
+            plane_numbers = _get_extra_plane_numbers(tk_mantra_node)
+            for plane_number in plane_numbers:
+                plane_parm_name = self.TK_EXTRA_PLANES_NAME % (plane_number,)
+                mantra_node.setUserData(plane_parm_name,
+                    tk_mantra_node.parm(plane_parm_name).eval())
+
+            # copy the inputs and move the outputs
+            _copy_inputs(tk_mantra_node, mantra_node)
+            _move_outputs(tk_mantra_node, mantra_node)
+
+            # make the new node the same color
+            mantra_node.setColor(tk_mantra_node.color())
+
+            # remember the name and position of the original tk mantra node
+            tk_mantra_node_name = tk_mantra_node.name()
+            tk_mantra_node_pos = tk_mantra_node.position()
+
+            # destroy the original tk mantra node
+            tk_mantra_node.destroy()
+
+            # name and reposition the new, regular mantra node to match the
+            # original
+            mantra_node.setName(tk_mantra_node_name)
+            mantra_node.setPosition(tk_mantra_node_pos)
+
+            app.log_debug("Converted: Tk Mantra node '%s' to Mantra node."
+                % (tk_mantra_node_name,))
+
 
     ############################################################################
-    # Public methods called from OTL - although these are public, they should
-    # be considered as private and not used directly!
-    def on_create_output_picture_menu(self, node):
+    # Instance methods
+
+    def __init__(self, app):
+        """Initialize the handler.
+        
+        :params app: The application instance. 
+        
         """
-        Creates the output path menu.
-        Used by parms: sgtk__vm_picture (menu script)
 
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        :returns: Menu list with token, label tuple.
-        :rtype: List
-        """
-        if self.__is_first_run(node) or self.__has_hip_path_changed():
-            self.reset_render_path(node)
-            self.__save_hip_path_to_user_data()
+        # keep a reference to the app for easy access to templates, settings,
+        # logging methods, tank, context, etc.
+        self._app = app
 
-        # Get path from hidden parameter which acts like a cache.
-        key = 'sgtk__vm_filename'
-        path = node.parm(key).unexpandedString()
+        # get and cache the list of profiles defined in the settings
+        self._output_profiles = {}
+        for output_profile in self._app.get_setting("output_profiles", []):
+            output_profile_name = output_profile["name"]
 
-        # Build the menu
-        menu = [path, 'sgtk',
-                'ip', 'mplay (interactive)',
-                'md', 'mplay (non-interactive)']
+            if output_profile_name in self._output_profiles:
+                self._app.log_warning(
+                    "Found multiple output profiles named '%s' for the "
+                    "Tk Mantra node! Only the first one will be available." %
+                    (output_profile_name,)
+                )
+                continue
 
-        return menu
+            self._output_profiles[output_profile_name] = output_profile
+            self._app.log_debug("Caching mantra output profile: '%s'" % 
+                (output_profile_name,))
 
-    def on_output_picture_render_method_callback(self, node):
-        """
-        Callback for when the menu on the "Output Picture" was changed.
-        E.g. from SGTK Path to mplay (interactive)
-        Will update all paramater on the node for the normal Houdini parameter
-        to represent the sgtk__ counterparts.
-        Used by parms: sgtk__vm_picture
 
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        self.__update_parms(node)
+    ############################################################################
+    # methods and callbacks executed via the OTL
 
-    def on_create_configuration_menu(self):
-        """
-        Script function to return the "Configuration" menu items/labels.
-        Used by parms: sgtk__config (menu script)
+    def copy_path_to_clipboard(self):
 
-        :returns: Menu list with token, label tuple.
-        :rtype: List
-        """
-        return self.__get_configuration_menu_labels()
-
-    def on_configuration_menu_callback(self, node):
-        """
-        Callback when "Configuration" menu was changed. Will call __set_profile
-        to update everything for the new profile.
-        Used by parms: sgtk__config
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        new_profile_name = self.get_node_profile_name(node)
-        self.__set_profile(node, new_profile_name, reset_all_settings=True)
-
-    def on_created_callback(self, node):
-        """
-        Callback when node was created. Will set the default_node_name.
-        Sets the default profile (first in the list).
-        Resets the render paths.
-        Used by scripts: OnCreated
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        self.__set_default_node_name(node)
-        new_profile_name = self.get_node_profile_name(node)
-        self.__set_profile(node, new_profile_name, reset_all_settings=True)
-        self.reset_render_path(node)
-
-    def on_usefile_plane_callback(self, node, parm):
-        """
-        Callback for "Different File" checkbox on every Extra Image Plane.
-        Sets the AOV Name to Channel Name or VEX Variable.
-        Resets the render paths to update the path for this AOV.
-        Sets the Label to "Disabled." when it is unchecked.
-        Used by parms: vm_usefile_plane#
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        :arg parm: Parm this is running on.
-        :type parm: hou.Parm
-        """
-        num = parm.name().replace('vm_usefile_plane', '')
-
-        if parm.eval():
-            channel_name = node.parm('vm_channel_plane' + num).eval()
-            vex_name = node.parm('vm_variable_plane' + num).eval()
-            name = channel_name if channel_name else vex_name
-            node.parm('sgtk__aov_name' + num).set(name)
-            self.reset_render_path(node)
-        else:
-            parm = node.parm('sgtk__vm_filename_plane' + num)
-            parm.lock(False)
-            parm.set('Disabled')
-            parm.lock(True)
-            node.parm('sgtk__aov_name' + num).set('')
-
-    def on_aov_name_changed_callback(self, node):
-        """
-        Callback for when the AOV Name was changed. Will reset the render paths
-        to stay up to date.
-        Used by parms: sgtk__aov_name#
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        self.reset_render_path(node)
-
-    def on_resolution_changed_callback(self, node):
-        """
-        Callback for when the resolution override changes.
-        Used by parms: override_camerares, res_fraction, res_override
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        self.reset_render_path(node)
-
-    def on_name_changed_callback(self, node):
-        """
-        Callback when node was renamed. Checks if this is a copy action to
-        prevent false errors.
-        Used by scripts: OnNameChanged
-
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        """
-        if not self.__is_node_being_copied(node):
-            self.reset_render_path(node)
-
-    def on_copy_path_to_clipboard_button_callback(self):
-        """
-        Callback from the node whenever the 'Copy path to clipboard' button
-        is pressed.
-        Used by parms: sgtk__copypath_button
-        """
-        node = hou.pwd()
-
-        # get the path depending if in full or proxy mode:
-        render_path = self.__get_render_path(node)
+        render_path = self._get_render_path(hou.pwd())
 
         # use Qt to copy the path to the clipboard:
         from sgtk.platform.qt import QtGui
         QtGui.QApplication.clipboard().setText(render_path)
 
-    def on_show_in_fs_button_callback(self):
-        """
-        Shows the location of the node in the file system.
-        This is a callback which is executed when the show in fs
-        button is pressed on the node.
-        Used by parms: sgtk__showinfs_button
-        """
-        node = hou.pwd()
+        self._app.log_debug(
+            "Copied render path to clipboard: %s" % (render_path,))
+
+    # get labels for all tk-houdini-mantranode output profiles
+    def get_output_profile_menu_labels(self):
+
+        menu_labels = []
+        for count, output_profile_name in enumerate(self._output_profiles):
+            menu_labels.extend([count, output_profile_name])
+
+        return menu_labels
+
+
+    # returns a list of output path menu items for the current node
+    def get_output_path_menu(self, node=None):
+
+        if not None:
+            node = hou.pwd()
+
+        # is this the first time this has been created?
+        is_first_run = (node.parm(self.TK_INIT_PARM_NAME).eval() == "True")
+        if is_first_run:
+            # set it to false for subsequent calls
+            node.parm(is_first_run).set("False")
+
+        # see if the hip file has changed
+        hip_path_changed = (
+            hou.hipFile.path() == node.parm(self.TK_HIP_PATH_PARM_NAME).eval())
+
+        if is_first_run or hip_path_changed:
+            # make sure node is in default state.
+            self.reset_render_path(node)
+
+            # cache current hip file path to compare against later
+            node.parm(self.TK_HIP_PATH_PARM_NAME).set(hou.hipFile.path())
+
+        # get path from hidden parameter which acts like a cache.
+        path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
+
+        # Build the menu
+        menu = ["sgtk", path,
+                "ip", "mplay (interactive)",
+                "md", "mplay (non-interactive)"]
+
+        return menu
+
+
+    # Reset the render path of the specified node.  This will force the render
+    # path to be updated based on the current script path and configuraton
+    def reset_render_path(self, node=None):
+
         if not node:
+            node = hou.pwd()
+
+        # Checks to see if the supplied node is being copied. Houdini renames
+        # the node by prepending original0_ to the original node when copying.
+        if node.name().startswith('original0'):
+            return
+
+        for (parm_name, template_name) in \
+            self.TK_RENDER_TEMPLATE_MAPPING.items():
+            self._compute_and_set(node, parm_name, template_name)
+
+        # Extra Image Planes / AOVs
+        plane_numbers = _get_extra_plane_numbers(node)
+        for plane_number in plane_numbers:
+            for (parm_name, template_name) in \
+                self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
+                parm_name = parm_name.replace('#', str(plane_number))
+                aov_name = node.parm(
+                    self.TK_EXTRA_PLANES_NAME % (plane_number,)).eval()
+                self._compute_and_set(node, parm_name, template_name, aov_name)
+
+        # set the output paths
+        path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
+        node.parm('sgtk_vm_picture').set(path)
+        node.parm('vm_picture').set(path)
+
+        self.update_parms(node)
+
+
+    # apply the selected profile in the session
+    def set_profile(self, node=None, reset=False):
+
+        if not node:
+            node = hou.pwd()
+
+        output_profile = self._get_output_profile(node)
+
+        self._app.log_debug("Applying tk mantra node profile: %s" % 
+            (output_profile["name"],))
+
+        # reset some parameters if need be
+        if reset:
+            for parm_name in self.TK_RESET_PARM_NAMES:
+                parm = node.parm(parm_name)
+                if parm:
+                    parm.revertToDefaults()
+
+            node.setColor(hou.Color([.8, .8, .8]))
+
+        # apply the supplied settings to the node
+        settings = output_profile["settings"]
+        if settings:
+            self._app.log_debug('Populating format settings: %s' % 
+                (file_settings,))
+            node.setParms(settings)
+
+        # set the node color
+        color = output_profile["color"]
+        if color:
+            node.setColor(hou.Color(color))
+
+        self.reset_render_path(node)
+
+
+    # open a file browser showing the render path of the current node
+    def show_in_fs(self):
+
+        # retrieve the calling node
+        current_node = hou.pwd()
+        if not current_node:
             return
 
         render_dir = None
 
         # first, try to just use the current cached path:
-        render_path = self.__get_render_path(node)
+        render_path = self._get_render_path(current_node)
+
         if render_path:
             # the above method returns houdini style slashes, so ensure these
             # are pointing correctly
@@ -434,21 +426,20 @@ class ToolkitMantraNodeHandler(object):
         if not render_dir:
             # render directory doesn't exist so try using location
             # of rendered frames instead:
-            try:
-                files = self.get_files_on_disk(node)
-                if len(files) == 0:
-                    msg = ("There are no renders for this node yet!\n"
-                           "When you render, the files will be written to "
-                           "the following location:\n\n%s" % render_path)
-                    hou.ui.displayMessage(msg)
-                else:
-                    render_dir = os.path.dirname(files[0])
-            except Exception, e:
-                msg = ("Unable to jump to file system:\n\n%s" % e)
+            rendered_files = self._get_rendered_files(current_node)
+
+            if not rendered_files:
+                msg = ("Unable to find rendered files for node '%s'." 
+                       % (current_node,))
+                self._app.log_error(msg)
                 hou.ui.displayMessage(msg)
+                return
+            else:
+                render_dir = os.path.dirname(rendered_files[0])
 
         # if we have a valid render path then show it:
         if render_dir:
+            # TODO: move to utility method in core
             system = sys.platform
 
             # run the app
@@ -459,409 +450,290 @@ class ToolkitMantraNodeHandler(object):
             elif system == "win32":
                 cmd = "cmd.exe /C start \"Folder\" \"%s\"" % render_dir
             else:
-                raise Exception("Platform '%s' is not supported." % system)
+                msg = "Platform '%s' is not supported." % (system,)
+                self._app.log_error(msg)
+                hou.ui.displayMessage(msg)
 
-            self._app.log_debug("Executing command '%s'" % cmd)
+            self._app.log_debug("Executing command:\n '%s'" % (cmd,))
             exit_code = os.system(cmd)
             if exit_code != 0:
-                msg = ("Failed to launch '%s'!" % cmd)
+                msg = "Failed to launch '%s'!" % (cmd,)
                 hou.ui.displayMessage(msg)
+
+    # called when the node is created
+    def setup_node(self, node):
+        
+        default_name = self._app.get_setting('default_node_name')
+        node.setName(default_name, unique_name=True)
+
+        # apply the default profile
+        self.set_profile(node, reset=True)
+
+        # make sure the render paths are in default state
+        self.reset_render_path(node)
+
+
+    def update_parms(self, node=None):
+
+        if not node:
+            node = hou.pwd()
+
+        # copies the value of one parm to another
+        copy_parm = lambda p1, p2: \
+            node.parm(p2).set(node.parm(p1).unexpandedString())
+
+        # copy the default udpate parms
+        for parm1, parm2 in self.TK_DEFAULT_UPDATE_PARM_MAPPING.items():
+            copy_parm(parm1, parm2)
+
+        # handle additional planes
+        plane_numbers = _get_extra_plane_numbers(node)
+        for plane_number in plane_numbers:
+            for parm1, parm2 in \
+                self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
+                parm1 = parm1.replace('#', str(num))
+                parm2 = parm2.replace('#', str(num))
+                copy_parm(parm1, parm2)
+
+    
+    # Callback for "Different File" checkbox on every Extra Image Plane.  Sets
+    # the AOV Name to Channel Name or VEX Variable.  Resets the render paths to
+    # update the path for this AOV.  Sets the Label to "Disabled." when it is
+    # unchecked.
+    def use_file_plane(self, node, parm):
+
+        # replace the parm basename with nothing, leaving the plane number
+        plane_number = parm.name().replace('vm_usefile_plane', '')
+
+        if parm.eval():
+
+            value = node.parm("vm_channel_plane%s" % (num,)).eval()
+            if not value:
+                value = node.parm("vm_variable_plane%s" % (num,)).eval()
+            node.parm(self.TK_EXTRA_PLANES_NAME % (num,)).set(value)
+            self.reset_render_path(node)
+        else:
+            path_parm = node.parm("sgtk_vm_filename_plane%s" % (num,))
+            path_parm.lock(False)
+            path_parm.set('Disabled')
+            path_parm.lock(True)
+            path_node.parm(self.TK_EXTRA_PLANES_NAME % (num,)).set("")
+
 
     ############################################################################
     # Private methods
 
-    @staticmethod
-    def __is_node_being_copied(node):
-        """
-        Checks if the node is being copied right now by checking the name.
-        Houdini is renaming the node by prepending original0_ to the original
-        node.
+    # compute and set and output path for the supplied parm
+    def _compute_and_set(self, node, parm_name, template_name, aov_name=None):
 
-        :arg node: Node this is running on.
-        :type node: hou.Node
-        :returns: True if node is being copied, False if not.
-        :rtype: Boolean
-        """
-        return True if node.name().startswith('original0') else False
+        try:
+            path = self._compute_output_path(node, template_name, aov_name)
+        except sgtk.TankError as err:
+            self._app.log_warning("%s: %s" % (node.name(), err))
+            path = "ERROR: %s" % (err,)
 
-    def __set_profile(self, node, profile_name, reset_all_settings=False):
+        # Unlock, set, lock
+        node.parm(parm_name).lock(False)
+        node.parm(parm_name).set(path)
+        node.parm(parm_name).lock(True)
 
-        # get the profile details:
-        profile = self._profiles.get(profile_name)
-        file_settings = profile["settings"]
 
-        # set the format
-        self.__populate_format_settings(node, file_settings, reset_all_settings)
+    # compute the output path based on the current work file and render template
+    def _compute_output_path(self, node, template_name, aov_name=None):
 
-        # Set tile color
-        tile_color = profile.get("tile_color")
-        if tile_color:
-            self.__set_tile_color(node, tile_color)
-        elif reset_all_settings:
-            self.__reset_tile_color(node)
-
-    @staticmethod
-    def __set_tile_color(node, tile_color):
-        color = hou.Color(tile_color)
-        node.setColor(color)
-
-    @staticmethod
-    def __reset_tile_color(node):
-        default_color = [0.8, 0.8, 0.8]
-        color = hou.Color(default_color)
-        node.setColor(color)
-
-    @staticmethod
-    def __copy_color(node_a, node_b):
-        color_a = node_a.color()
-        node_b.setColor(color_a)
-
-    @staticmethod
-    def __reset_parms(node, parm_names=None):
-        # If parm_names is not provided use the following output specific list.
-        # Output specific parms. Try not to reset parms related to anything
-        # else.
-        format_specific = ['vm_device',
-                           'soho_mkpath',
-                           'vm_image_jpeg_quality',
-                           'vm_image_tiff_compression',
-                           'vm_image_exr_compression',
-                           'soho_compression']
-        parm_names = parm_names if parm_names else format_specific
-        for parm_name in parm_names:
-            parm = node.parm(parm_name)
-            parm.revertToDefaults()
-
-    def __populate_format_settings(self, node, file_settings,
-                                   reset_all_settings=False):
-        """
-        Controls the file format of the write node
-
-        :param node:                The Shotgun Write node to set the profile on
-        :param file_type:           The file type to set on the internal Write
-                                    node
-        :param file_settings:       A dictionary of settings to set on the
-                                    internal Write node
-        :param reset_all_settings:  Determines if all settings should be set on
-                                    the internal Write node (True) or just those
-                                    that aren't propagated to the Shotgun Write
-                                    node (False)
-        """
-        if reset_all_settings:
-            self.__reset_parms(node)
-
-        # now apply file format settings
-        self._app.log_debug('Populating format settings: {0}'.format(
-            file_settings))
-        node.setParms(file_settings)
-
-    @staticmethod
-    def __set_initial_output_picture(node):
-        path = node.parm('sgtk__vm_filename').unexpandedString()
-        node.parm('sgtk__vm_picture').set(path)
-        node.parm('vm_picture').set(path)
-
-    def __get_node_profile_settings(self, node):
-        """
-        Find the profile settings for the specified node
-        """
-        profile_name = self.get_node_profile_name(node)
-        if profile_name:
-            return self._profiles.get(profile_name)
-        else:
-            return None
-
-    def __has_hip_path_changed(self):
-        current = hou.hipFile.path()
-        cached = self.__load_hip_path_from_user_data()
-        return current != cached
-
-    @staticmethod
-    def __is_first_run(node):
-        key = 'sgtk__initialized'
-        is_first_run = node.parm(key).eval()
-        if not is_first_run == 'True':
-            node.parm(key).set('True')
-        else:
-            is_first_run = False
-        return is_first_run
-
-    @staticmethod
-    def __save_hip_path_to_user_data(path=None, node=None):
-        path = path if path else hou.hipFile.path()
-        node = node if node else hou.pwd()
-        node.parm('sgtk__hip_path').set(path)
-
-    @staticmethod
-    def __load_hip_path_from_user_data(node=None):
-        node = node if node else hou.pwd()
-        return node.parm('sgtk__hip_path').eval()
-
-    @staticmethod
-    def __copy_inputs_to_node(node, target, ignore_missing=False):
-        """ Copy all the input connections from this node to the
-            target node.
-
-            ignore_missing: If the target node does not have enough
-                            inputs then skip this connection.
-        """
-        input_connections = node.inputConnections()
-
-        num_target_inputs = len(target.inputConnectors())
-        if num_target_inputs is 0:
-            raise hou.OperationFailed("Target node has no inputs.")
-
-        for connection in input_connections:
-            index = connection.inputIndex()
-            if index > (num_target_inputs - 1):
-                if ignore_missing:
-                    continue
-                else:
-                    raise hou.InvalidInput("Target node has too few inputs.")
-
-            target.setInput(index, connection.inputNode())
-
-    @staticmethod
-    def __move_outputs_to_node(node, target):
-        """ Move all the output connections from this node to the
-            target node.
-        """
-        output_connections = node.outputConnections()
-
-        for connection in output_connections:
-            node = connection.outputNode()
-            node.setInput(connection.inputIndex(), target)
-
-    @staticmethod
-    def __copy_parm_values(source_node, target_node, exclude=None):
-        """
-        Copy parameter values of the source node to those of the target node
-        if a parameter with the same name exists.
-        """
-        exclude = exclude if exclude else []
-        parms = [p for p in source_node.parms() if p.name() not in exclude]
-        for parm_to_copy in parms:
-
-            parm_template = parm_to_copy.parmTemplate()
-            # Skip folder parms.
-            if isinstance(parm_template, hou.FolderSetParmTemplate):
-                continue
-
-            parm_to_copy_to = target_node.parm(parm_to_copy.name())
-            # If the parm on the target node does not exist, skip this parm.
-            if parm_to_copy_to is None:
-                continue
-
-            # If we have keys/expressions we need to copy them all.
-            if parm_to_copy.keyframes():
-                # Copy all hou.Keyframe objects.
-                for key in parm_to_copy.keyframes():
-                    parm_to_copy_to.setKeyframe(key)
-            else:
-                # If the parameter is a string copy the raw string.
-                if isinstance(parm_template, hou.StringParmTemplate):
-                    parm_to_copy_to.set(parm_to_copy.unexpandedString())
-                # Copy the raw value.
-                else:
-                    parm_to_copy_to.set(parm_to_copy.eval())
-
-    def __get_hipfile_fields(self):
-        """
-        Extract fields from the current Houdini file using the template
-        """
-        curr_filename = hou.hipFile.path()
-
-        work_fields = {}
-        if self._script_template \
-                and self._script_template.validate(curr_filename):
-            work_fields = self._script_template.get_fields(curr_filename)
-
-        return work_fields
-
-    @staticmethod
-    def __get_render_path(node):
-        output_parm = node.parm('sgtk__vm_filename')
-        path = output_parm.unexpandedString()
-        return path
-
-    def __get_template(self, node, name):
-        """
-        Get the named template for the specified node.
-        """
-        template_name = None
-
-        # get the template from the nodes profile settings:
-        settings = self.__get_node_profile_settings(node)
-        if settings:
-            template_name = settings[name]
-
-        return self._app.get_template_by_name(template_name)
-
-    def __get_files_on_disk(self, node):
-        """
-        Called from render publisher & UI (via exists_on_disk)
-        Returns the files on disk associated with this node
-        """
-        file_name = self.__get_render_path(node)
-        template = self.__get_template(node, "template_render")
-
-        if not template.validate(file_name):
-            msg = ("Could not resolve the files on disk for node %s."
-                   "The path '%s' is not recognized by Shotgun!"
-                   % (node.name(), file_name))
-            raise Exception(msg)
-
-        fields = template.get_fields(file_name)
-
-        # make sure we don't look for any eye - %V or SEQ - %04d stuff
-        frames = self._app.tank.paths_from_template(template, fields,
-                                                    ["SEQ", "eye"])
-        return frames
-
-    def __update_parms(self, node):
-
-        def copy_path_to_parm(key_, value_):
-            path_ = node.parm(key_).unexpandedString()
-            node.parm(value_).set(path_)
-
-        map_ = {'sgtk__vm_picture': 'vm_picture',
-                'sgtk__soho_diskfile': 'soho_diskfile',
-                'sgtk__vm_dcmfilename': 'vm_dcmfilename'}
-        for key, value in map_.items():
-            copy_path_to_parm(key, value)
-
-        # Extra Image Planes / AOVs
-        extra = {'sgtk__vm_filename_plane#': 'vm_filename_plane#'}
-        nums = self.__get_all_extra_plane_numbers(node)
-        for num in nums:
-            for key, value in extra.items():
-                key = key.replace('#', str(num))
-                value = value.replace('#', str(num))
-                copy_path_to_parm(key, value)
-
-    @staticmethod
-    def __get_all_extra_plane_numbers(node):
-            numbers = xrange(1, node.parm('vm_numaux').eval() + 1)
-            return numbers
-
-    def __gather_render_resolution(self, node):
-        # Get the camera
-        cam_path = node.parm("camera").eval()
-        cam_node = hou.node(cam_path)
-        if not cam_node:
-            raise sgtk.TankError("Camera %s not found." % cam_path)
-        width = cam_node.parm("resx").eval()
-        height = cam_node.parm("resy").eval()
-
-        # Calculate Resolution Override
-        if self.__has_res_override(node):
-            scale = node.parm('res_fraction').eval()
-            if scale == 'specific':
-                width = node.parm('res_overridex').eval()
-                height = node.parm('res_overridey').eval()
-            else:
-                width = int(float(width) * float(scale))
-                height = int(float(height) * float(scale))
-
-        return width, height
-
-    @staticmethod
-    def __has_res_override(node):
-        return node.parm('override_camerares').eval()
-
-    def __compute_path(self, node, settings, template_alias, aov_name=None):
         # Get relevant fields from the scene filename and contents
-        work_file_fields = self.__get_hipfile_fields()
+        work_file_fields = self._get_hipfile_fields()
+
         if not work_file_fields:
             msg = "This Houdini file is not a Shotgun Toolkit work file!"
             raise sgtk.TankError(msg)
 
-        # Get the templates from the node settings
-        template_name = settings.get(template_alias)
-        template = self._app.get_template_by_name(template_name)
+        output_profile = self._get_output_profile(node)
 
-        if not template:
-            msg = 'No Template provided for "{0}"'
-            raise sgtk.TankError(msg.format(template_name))
+        # Get the render template from the app
+        output_template = self._app.get_template_by_name(
+            output_profile[template_name])
 
         # create fields dict with all the metadata
-        fields = dict()
-        fields["name"] = work_file_fields.get("name")
-        fields["version"] = work_file_fields["version"]
-        # fields["node"] = self.get_node_name(node)
-        fields["renderpass"] = self.get_node_name(node)
-        fields["SEQ"] = "FORMAT: $F"
+        fields = {
+            "name": work_file_fields.get("name", None),
+            "node": node.name(),
+            "renderpass": node.name(),
+            "SEQ": "FORMAT: $F",
+            "version": work_file_fields.get("version", None),
+        } 
+
+        # use %V - full view printout as default for the eye field
+        fields["eye"] = "%V"
 
         if aov_name:
-            # fields["channel"] = channel_name
             fields["aov_name"] = aov_name
 
         # Get the camera width and height if necessary
-        if "width" in template.keys or "height" in template.keys:
-            width, height = self.__gather_render_resolution(node)
+        if "width" in output_template.keys or "height" in output_template.keys:
+            width, height = _get_render_resolution(node)
             fields["width"] = width
             fields["height"] = height
 
-        fields.update(self._app.context.as_template_fields(template))
+        fields.update(self._app.context.as_template_fields(output_template))
 
-        path = template.apply_fields(fields)
-        path = path.replace('\\', '/')
+        path = output_template.apply_fields(fields)
+        path = path.replace(os.path.sep, '/')
+
         return path
 
-    def __update_render_path(self, node):
-        """
-        Update the render path and the various feedback knobs based on the
-        current context and other node settings.
 
-        :param node:        The Shotgun Write node to update the path for
-        :param force_reset: Force the path to be reset regardless of any cached
-                            values
-        :param is_proxy:    If True then update the proxy render path, otherwise
-                            just update the normal render path.
-        :returns:           The updated render path
-        """
-        def compute_and_set(node_, parm_name, node_settings_,
-                            value_, aov_name_=None):
-            try:
-                path = self.__compute_path(node_, node_settings_, value_,
-                                           aov_name_)
-            except sgtk.TankError as err:
-                warn_err = '{0}: {1}'.format(node_.name(), err)
-                self._app.log_warning(warn_err)
-                path = "ERROR: {0}".format(err)
-            # Unlock parm
-            node_.parm(parm_name).lock(False)
-            # Set path
-            node_.parm(parm_name).set(path)
-            # Lock parm
-            node_.parm(parm_name).lock(True)
+    # get the current output profile
+    def _get_output_profile(self, node=None):
 
-        node_settings = self.__get_node_profile_settings(node)
+        if not node:
+            node = hou.pwd()
 
-        map_ = {'sgtk__vm_filename': 'template_render',
-                'sgtk__soho_diskfile': 'template_ifd',
-                'sgtk__vm_dcmfilename': 'template_dcm'}
-        for key, value in map_.items():
-            compute_and_set(node, key, node_settings, value)
+        output_profile_parm = node.parm(self.TK_OUTPUT_PROFILE_PARM)
+        output_profile_name = \
+            output_profile_parm.menuLabels()[output_profile_parm.eval()]
+        return self._output_profiles[output_profile_name]
 
-        # Extra Image Planes / AOVs
-        extra = {'sgtk__vm_filename_plane#': 'template_extra_plane'}
-        nums = self.__get_all_extra_plane_numbers(node)
-        for num in nums:
-            for key, value in extra.items():
-                key = key.replace('#', str(num))
-                aov_name = node.parm('sgtk__aov_name{0}'.format(num)).eval()
-                compute_and_set(node, key, node_settings, value, aov_name)
 
-    def __get_configuration_menu_labels(self):
-        # Combine two lists in alternating fashion.
-        menu_labels = [None] * (2 * len(self._profile_names))
-        menu_labels[::2] = ['sgtk'] * len(self._profile_names)
-        menu_labels[1::2] = self._profile_names
-        return menu_labels
+    # extract fields from current Houdini file using the workfile template
+    def _get_hipfile_fields(self):
+        current_file_path = hou.hipFile.path()
 
-    def __set_default_node_name(self, node):
-        node_settings = self.__get_node_profile_settings(node)
-        name = node_settings.get('default_node_name')
-        if name:
-            node.setName(name, unique_name=True)
+        work_fields = {}
+        work_file_template = self._app.get_template("work_file_template")
+        if (work_file_template and 
+            work_file_template.validate(current_file_path)):
+            work_fields = work_file_template.get_fields(current_file_path)
+
+        return work_fields
+
+
+    # get the render path from current item in the output path parm menu
+    def _get_render_path(self, node):
+        output_parm = node.parm(self.NODE_OUTPUT_PATH_PARM)
+        return output_parm.unexpandedString()
+
+    
+    # returns the files on disk associated with this node
+    def _get_rendered_files(self, node):
+
+        file_name = self._get_render_path(node)
+        output_profile = self._get_output_profile(node)
+
+        # get the output cache template for the current profile
+        output_render_template = self._app.get_template_by_name(
+            output_profile["output_render_template"])
+
+        if not output_render_template.validate(file_name):
+            msg = ("Unable to validate files on disk for node %s."
+                   "The path '%s' is not recognized by Shotgun."
+                   % (node.name(), file_name))
+            self._app.log_error(msg)
+            return []
+            
+        fields = output_render_template.get_fields(file_name)
+
+        # get the actual file paths based on the template. Ignore any sequence
+        # or eye fields
+        return self._app.tank.paths_from_template(
+            output_render_template, fields, ["SEQ", "eye"])
+
+
+################################################################################
+# Utility methods
+
+# Copy all the input connections from this node to the target node.
+def _copy_inputs(source_node, target_node):
+
+    input_connections = source_node.inputConnections()
+    num_target_inputs = len(target_node.inputConnectors())
+
+    if len(input_connections) > num_target_inputs:
+        raise hou.InvalidInput(
+            "Not enough inputs on target node. Cannot copy inputs from "
+            "'%s' to '%s'" % (source_node, target_node)
+        )
+        
+    for connection in input_connections:
+        target_node.setInput(connection.inputIndex(),
+            connection.inputNode())
+
+
+# Copy parameter values of the source node to those of the target node if a
+# parameter with the same name exists.
+def _copy_parm_values(source_node, target_node, excludes=None):
+
+    if not excludes:
+        excludes = []
+
+    # build a parameter list from the source node, ignoring the excludes
+    source_parms = [
+        parm for parm in source_node.parms() if parm.name() not in excludes]
+
+    for source_parm in source_parms:
+
+        source_parm_template = source_parm.parmTemplate()
+
+        # skip folder parms
+        if isinstance(source_parm_template, hou.FolderSetParmTemplate):
+            continue
+
+        target_parm = target_node.parm(source_parm.name())
+
+        # if the parm on the target node doesn't exist, skip it
+        if target_parm is None:
+            continue
+
+        # if we have keys/expressions we need to copy them all.
+        if source_parm.keyframes():
+            for key in source_parm.keyframes():
+                target_parm.setKeyframe(key)
+        else:
+            # if the parameter is a string, copy the raw string.
+            if isinstance(source_parm_template, hou.StringParmTemplate):
+                target_parm.set(source_parm.unexpandedString())
+            # copy the evaluated value
+            else:
+                target_parm.set(source_parm.eval())
+
+
+# return a list of aov plane nubmers
+def _get_extra_plane_numbers(node):
+    return xrange(1,
+        node.parm(TkMantraNodeHandler.TK_EXTRA_PLANE_COUNT_PARM).eval() + 1)
+
+
+# get the render resolution for the supplied node based on its camera parm
+def _get_render_resolution(node):
+
+    # Get the camera
+    cam_path = node.parm("camera").eval()
+    cam_node = hou.node(cam_path)
+
+    if not cam_node:
+        raise sgtk.TankError("Camera %s not found." % (cam_path,))
+
+    width = cam_node.parm("resx").eval()
+    height = cam_node.parm("resy").eval()
+
+    # Calculate Resolution Override
+    if node.parm('override_camerares').eval():
+        scale = node.parm('res_fraction').eval()
+        if scale == 'specific':
+            width = node.parm('res_overridex').eval()
+            height = node.parm('res_overridey').eval()
+        else:
+            width = int(float(width) * float(scale))
+            height = int(float(height) * float(scale))
+
+    return width, height
+
+
+# move all the output connections from the source node to the target node
+def _move_outputs(source_node, target_node):
+
+    for connection in source_node.outputConnections():
+        output_node = connection.outputNode()
+        output_node.setInput(connection.inputIndex(), target_node)
+
+

@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -9,28 +9,62 @@
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
 """
-Mantra Output App for Houdini
+Mantra Output node App for use with Toolkit's Houdini engine.
 """
 
 import sgtk
 
 
-class MantraOutputNode(sgtk.platform.Application):
+class TkMantraNodeApp(sgtk.platform.Application):
+    """The Mantra Output Node."""
+
     def init_app(self):
-        module = self.import_module("tk_houdini_mantranode")
-        self.handler = module.ToolkitMantraNodeHandler(self)
+        """Initialize the app."""
 
-    def convert_to_mantra_nodes(self):
-        """
-        Convert all Shotgun Mantra nodes found in the current Script to regular
-        Mantra nodes.  Additional toolkit information will be stored in
+        tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
+        self.handler = tk_houdini_mantra.TkMantraNodeHandler(self)
+
+    def convert_to_regular_mantra_nodes(self):
+        """Convert Toolkit Mantra nodes to regular Mantra nodes.
+
+        Convert all Tooklit Mantra nodes found in the current script to 
+        regular Mantra nodes. Additional Toolkit information will be stored in
         user data named 'tk_*'
-        """
-        self.handler.convert_sg_to_mantra_nodes()
 
-    def convert_from_mantra_nodes(self):
+        Example usage::
+
+        >>> import sgtk
+        >>> eng = sgtk.platform.current_engine()
+        >>> app = eng.apps["tk-houdini-mantranode"]
+        >>> app.convert_to_regular_mantra_nodes()
+
         """
-        Convert all regular Mantra nodes that have previously been converted
-        from Shotgun Mantra nodes, back into Shotgun Mantra nodes.
+
+        self.log_debug(
+            "Converting Toolkit Mantra nodes to built-in Mantra nodes.")
+        tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
+        tk_houdini_mantra.TkMantraNodeHandler.\
+            convert_to_regular_mantra_nodes(self)
+
+    def convert_back_to_tk_mantra_nodes(self):
+        """Convert regular Mantra nodes back to Toolkit Mantra nodes.
+
+        Convert any regular Mantra nodes that were previously converted
+        from Toolkit Mantra nodes back into Toolkit Mantra nodes.
+
+        Example usage::
+
+        >>> import sgtk
+        >>> eng = sgtk.platform.current_engine()
+        >>> app = eng.apps["tk-houdini-mantranode"]
+        >>> app.convert_back_to_tk_mantra_nodes()
+
         """
-        self.handler.convert_mantra_to_sg_nodes()
+
+        self.log_debug(
+            "Converting built-in Mantra nodes back to Toolkit Mantra nodes.")
+        tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
+        tk_houdini_mantra.TkMantraNodeHandler.\
+            convert_back_to_tk_mantra_nodes(self)
+
+
