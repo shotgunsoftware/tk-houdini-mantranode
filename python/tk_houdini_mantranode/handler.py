@@ -704,8 +704,13 @@ class TkMantraNodeHandler(object):
 ################################################################################
 # Utility methods
 
-# Copy all the input connections from this node to the target node.
 def _copy_inputs(source_node, target_node):
+    """Copy all the input connections from this node to the target node.
+
+    :param hou.Node source_node: Soure node with inputs to copy.
+    :param hou.Node target_node: Target node to receive the copied inputs.
+
+    """
 
     input_connections = source_node.inputConnections()
     num_target_inputs = len(target_node.inputConnectors())
@@ -721,9 +726,14 @@ def _copy_inputs(source_node, target_node):
             connection.inputNode())
 
 
-# Copy parameter values of the source node to those of the target node if a
-# parameter with the same name exists.
 def _copy_parm_values(source_node, target_node, excludes=None):
+    """Copy matching parameter values from source node to target node.
+
+    :param hou.Node source_node: Soure node with parm values to copy.
+    :param hou.Node target_node: Target node to receive the copied parm values.
+    :parm list excludes: List of parm names to exclude during copy.
+
+    """
 
     if not excludes:
         excludes = []
@@ -759,14 +769,23 @@ def _copy_parm_values(source_node, target_node, excludes=None):
                 target_parm.set(source_parm.eval())
 
 
-# return a list of aov plane nubmers
 def _get_extra_plane_numbers(node):
+    """Return a list of aov plane nubmers.
+    
+    :param hou.Node node: The node being acted upon.
+    
+    """
+
     return xrange(1,
         node.parm(TkMantraNodeHandler.TK_EXTRA_PLANE_COUNT_PARM).eval() + 1)
 
 
-# get the render resolution for the supplied node based on its camera parm
 def _get_render_resolution(node):
+    """Returns render resolution for supplied node based on its camera parm.
+
+    :param hou.Node node: The node being acted upon.
+
+    """
 
     # Get the camera
     cam_path = node.parm("camera").eval()
@@ -791,8 +810,13 @@ def _get_render_resolution(node):
     return width, height
 
 
-# move all the output connections from the source node to the target node
 def _move_outputs(source_node, target_node):
+    """Moves all the output connections from source node to target node
+
+    :param hou.Node source_node: Soure node with outputs to move.
+    :param hou.Node target_node: Target node to receive the moved outputs.
+
+    """
 
     for connection in source_node.outputConnections():
         output_node = connection.outputNode()
