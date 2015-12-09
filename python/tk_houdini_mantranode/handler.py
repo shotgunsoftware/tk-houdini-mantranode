@@ -408,8 +408,7 @@ class TkMantraNodeHandler(object):
         # apply the supplied settings to the node
         settings = output_profile["settings"]
         if settings:
-            self._app.log_debug("Populating format settings: %s" % 
-                (file_settings,))
+            self._app.log_debug("Populating format settings: %s" % (settings,))
             node.setParms(settings)
 
         # set the node color
@@ -520,8 +519,8 @@ class TkMantraNodeHandler(object):
         for plane_number in plane_numbers:
             for parm1, parm2 in \
                 self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
-                parm1 = parm1.replace("#", str(num))
-                parm2 = parm2.replace("#", str(num))
+                parm1 = parm1.replace("#", str(plane_number))
+                parm2 = parm2.replace("#", str(plane_number))
                 copy_parm(parm1, parm2)
 
     
@@ -542,17 +541,18 @@ class TkMantraNodeHandler(object):
 
         if parm.eval():
 
-            value = node.parm("vm_channel_plane%s" % (num,)).eval()
+            value = node.parm("vm_channel_plane%s" % (plane_number,)).eval()
             if not value:
-                value = node.parm("vm_variable_plane%s" % (num,)).eval()
-            node.parm(self.TK_EXTRA_PLANES_NAME % (num,)).set(value)
+                value = node.parm(
+                    "vm_variable_plane%s" % (plane_number,)).eval()
+            node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set(value)
             self.reset_render_path(node)
         else:
-            path_parm = node.parm("sgtk_vm_filename_plane%s" % (num,))
+            path_parm = node.parm("sgtk_vm_filename_plane%s" % (plane_number,))
             path_parm.lock(False)
             path_parm.set("Disabled")
             path_parm.lock(True)
-            path_node.parm(self.TK_EXTRA_PLANES_NAME % (num,)).set("")
+            path_node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set("")
 
 
     ############################################################################
