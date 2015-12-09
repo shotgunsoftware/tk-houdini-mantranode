@@ -32,11 +32,11 @@ class TkMantraNodeHandler(object):
 
     NODE_OUTPUT_PATH_PARM = "sgtk_vm_filename"
 
-    TK_EXTRA_PLANE_COUNT_PARM = 'vm_numaux'
+    TK_EXTRA_PLANE_COUNT_PARM = "vm_numaux"
     """Parameter that stores the number of aov planes."""
 
     TK_EXTRA_PLANE_TEMPLATE_MAPPING = {
-        'sgtk_vm_filename_plane#': 'output_extra_plane_template'
+        "sgtk_vm_filename_plane#": "output_extra_plane_template"
     }
     """Maps additional plane parameter names to output template names"""
 
@@ -46,7 +46,7 @@ class TkMantraNodeHandler(object):
     TK_INIT_PARM_NAME = "sgtk_initialized"
     """Parameter used to store whether a tk mantra node has been initialized."""
 
-    TK_HIP_PATH_PARM_NAME = 'sgtk_hip_path'
+    TK_HIP_PATH_PARM_NAME = "sgtk_hip_path"
     """Holds cached path to the hip file."""
 
     TK_MANTRA_NODE_TYPE = "sgtk_mantra"
@@ -341,7 +341,7 @@ class TkMantraNodeHandler(object):
 
         # Checks to see if the supplied node is being copied. Houdini renames
         # the node by prepending original0_ to the original node when copying.
-        if node.name().startswith('original0'):
+        if node.name().startswith("original0"):
             return
 
         for (parm_name, template_name) in \
@@ -353,15 +353,15 @@ class TkMantraNodeHandler(object):
         for plane_number in plane_numbers:
             for (parm_name, template_name) in \
                 self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
-                parm_name = parm_name.replace('#', str(plane_number))
+                parm_name = parm_name.replace("#", str(plane_number))
                 aov_name = node.parm(
                     self.TK_EXTRA_PLANES_NAME % (plane_number,)).eval()
                 self._compute_and_set(node, parm_name, template_name, aov_name)
 
         # set the output paths
         path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
-        node.parm('sgtk_vm_picture').set(path)
-        node.parm('vm_picture').set(path)
+        node.parm("sgtk_vm_picture").set(path)
+        node.parm("vm_picture").set(path)
 
         self.update_parms(node)
 
@@ -389,7 +389,7 @@ class TkMantraNodeHandler(object):
         # apply the supplied settings to the node
         settings = output_profile["settings"]
         if settings:
-            self._app.log_debug('Populating format settings: %s' % 
+            self._app.log_debug("Populating format settings: %s" % 
                 (file_settings,))
             node.setParms(settings)
 
@@ -463,7 +463,7 @@ class TkMantraNodeHandler(object):
     # called when the node is created
     def setup_node(self, node):
         
-        default_name = self._app.get_setting('default_node_name')
+        default_name = self._app.get_setting("default_node_name")
         node.setName(default_name, unique_name=True)
 
         # apply the default profile
@@ -491,8 +491,8 @@ class TkMantraNodeHandler(object):
         for plane_number in plane_numbers:
             for parm1, parm2 in \
                 self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
-                parm1 = parm1.replace('#', str(num))
-                parm2 = parm2.replace('#', str(num))
+                parm1 = parm1.replace("#", str(num))
+                parm2 = parm2.replace("#", str(num))
                 copy_parm(parm1, parm2)
 
     
@@ -503,7 +503,7 @@ class TkMantraNodeHandler(object):
     def use_file_plane(self, node, parm):
 
         # replace the parm basename with nothing, leaving the plane number
-        plane_number = parm.name().replace('vm_usefile_plane', '')
+        plane_number = parm.name().replace("vm_usefile_plane", "")
 
         if parm.eval():
 
@@ -515,7 +515,7 @@ class TkMantraNodeHandler(object):
         else:
             path_parm = node.parm("sgtk_vm_filename_plane%s" % (num,))
             path_parm.lock(False)
-            path_parm.set('Disabled')
+            path_parm.set("Disabled")
             path_parm.lock(True)
             path_node.parm(self.TK_EXTRA_PLANES_NAME % (num,)).set("")
 
@@ -578,7 +578,7 @@ class TkMantraNodeHandler(object):
         fields.update(self._app.context.as_template_fields(output_template))
 
         path = output_template.apply_fields(fields)
-        path = path.replace(os.path.sep, '/')
+        path = path.replace(os.path.sep, "/")
 
         return path
 
@@ -717,11 +717,11 @@ def _get_render_resolution(node):
     height = cam_node.parm("resy").eval()
 
     # Calculate Resolution Override
-    if node.parm('override_camerares').eval():
-        scale = node.parm('res_fraction').eval()
-        if scale == 'specific':
-            width = node.parm('res_overridex').eval()
-            height = node.parm('res_overridey').eval()
+    if node.parm("override_camerares").eval():
+        scale = node.parm("res_fraction").eval()
+        if scale == "specific":
+            width = node.parm("res_overridex").eval()
+            height = node.parm("res_overridey").eval()
         else:
             width = int(float(width) * float(scale))
             height = int(float(height) * float(scale))
