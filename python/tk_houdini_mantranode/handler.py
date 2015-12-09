@@ -278,6 +278,7 @@ class TkMantraNodeHandler(object):
     # methods and callbacks executed via the OTL
 
     def copy_path_to_clipboard(self):
+        """Copies the evaluated render path template to the clipboard."""
 
         render_path = self._get_render_path(hou.pwd())
 
@@ -288,8 +289,8 @@ class TkMantraNodeHandler(object):
         self._app.log_debug(
             "Copied render path to clipboard: %s" % (render_path,))
 
-    # get labels for all tk-houdini-mantranode output profiles
     def get_output_profile_menu_labels(self):
+        """Returns labels for all tk-houdini-mantranode output profiles."""
 
         menu_labels = []
         for count, output_profile_name in enumerate(self._output_profiles):
@@ -298,8 +299,15 @@ class TkMantraNodeHandler(object):
         return menu_labels
 
 
-    # returns a list of output path menu items for the current node
     def get_output_path_menu(self, node=None):
+        """Returns a list of output path menu items for the current node.
+        
+        :param hou.Node node: The node being acted upon.
+
+        :return: The menu of the form [menu_id, display, menu_id, display, ...]
+        :rtype: list of str
+        
+        """
 
         if not None:
             node = hou.pwd()
@@ -332,9 +340,14 @@ class TkMantraNodeHandler(object):
         return menu
 
 
-    # Reset the render path of the specified node.  This will force the render
-    # path to be updated based on the current script path and configuraton
     def reset_render_path(self, node=None):
+        """Reset the render path of the specified node. 
+
+        :param hou.Node node: The node being acted upon.
+        
+        This will force the render path to be updated based on the current
+        script path and configuraton.
+        """
 
         if not node:
             node = hou.pwd()
@@ -366,8 +379,14 @@ class TkMantraNodeHandler(object):
         self.update_parms(node)
 
 
-    # apply the selected profile in the session
     def set_profile(self, node=None, reset=False):
+        """Apply the selected profile in the session.
+        
+        :param hou.Node node: The node being acted upon.
+        :param bool reset: When True, reset predefined param to defaults.
+            Includes TK_RESET_PARM_NAMES parms as well as node color.
+        
+        """
 
         if not node:
             node = hou.pwd()
@@ -401,8 +420,8 @@ class TkMantraNodeHandler(object):
         self.reset_render_path(node)
 
 
-    # open a file browser showing the render path of the current node
     def show_in_fs(self):
+        """Open a file browser showing the render path of the current node."""
 
         # retrieve the calling node
         current_node = hou.pwd()
@@ -460,8 +479,12 @@ class TkMantraNodeHandler(object):
                 msg = "Failed to launch '%s'!" % (cmd,)
                 hou.ui.displayMessage(msg)
 
-    # called when the node is created
     def setup_node(self, node):
+        """Setup newly created node with default name, profile, settings.
+        
+        :param hou.Node node: The node being acted upon.
+        
+        """
         
         default_name = self._app.get_setting("default_node_name")
         node.setName(default_name, unique_name=True)
@@ -474,6 +497,12 @@ class TkMantraNodeHandler(object):
 
 
     def update_parms(self, node=None):
+        """Update a set of predefined parameters as the render path changes.
+        
+        :param hou.Node node: The node being acted upon.
+        
+        
+        """
 
         if not node:
             node = hou.pwd()
@@ -496,11 +525,17 @@ class TkMantraNodeHandler(object):
                 copy_parm(parm1, parm2)
 
     
-    # Callback for "Different File" checkbox on every Extra Image Plane.  Sets
-    # the AOV Name to Channel Name or VEX Variable.  Resets the render paths to
-    # update the path for this AOV.  Sets the Label to "Disabled." when it is
-    # unchecked.
     def use_file_plane(self, node, parm):
+        """Callback for "Different File" checkbox on every Extra Image Plane.
+
+        :param hou.Node node: The node being acted upon.
+        :param hou.Parm parm: The checkbox parm for turning the option on/off.
+        
+        Sets the AOV Name to Channel Name or VEX Variable.  Resets the render
+        paths to update the path for this AOV.  Sets the Label to "Disabled."
+        when it is unchecked.
+
+        """
 
         # replace the parm basename with nothing, leaving the plane number
         plane_number = parm.name().replace("vm_usefile_plane", "")
@@ -523,8 +558,15 @@ class TkMantraNodeHandler(object):
     ############################################################################
     # Private methods
 
-    # compute and set and output path for the supplied parm
     def _compute_and_set(self, node, parm_name, template_name, aov_name=None):
+        """Compute and set and output path for the supplied parm.
+        
+        :param hou.Node node: The node being acted upon.
+        :param str parm_name: The name of the parameter to set.
+        :param str template_name: The template to compute as the output path.
+        :param str aov_name: Optional AOV name used during comput of path.
+        
+        """
 
         try:
             path = self._compute_output_path(node, template_name, aov_name)
@@ -538,8 +580,14 @@ class TkMantraNodeHandler(object):
         node.parm(parm_name).lock(True)
 
 
-    # compute the output path based on the current work file and render template
     def _compute_output_path(self, node, template_name, aov_name=None):
+        """Compute output path based on current work file and render template.
+
+        :param hou.Node node: The node being acted upon.
+        :param str template_name: The name of template to compute a path for.
+        :param str aov_name: Optional AOV name used to compute the path.
+
+        """
 
         # Get relevant fields from the scene filename and contents
         work_file_fields = self._get_hipfile_fields()
@@ -583,8 +631,12 @@ class TkMantraNodeHandler(object):
         return path
 
 
-    # get the current output profile
     def _get_output_profile(self, node=None):
+        """Get the current output profile.
+        
+        :param hou.Node node: The node being acted upon.
+        
+        """
 
         if not node:
             node = hou.pwd()
@@ -595,8 +647,9 @@ class TkMantraNodeHandler(object):
         return self._output_profiles[output_profile_name]
 
 
-    # extract fields from current Houdini file using the workfile template
     def _get_hipfile_fields(self):
+        """Extract fields from current Houdini file using workfile template."""
+
         current_file_path = hou.hipFile.path()
 
         work_fields = {}
@@ -608,14 +661,23 @@ class TkMantraNodeHandler(object):
         return work_fields
 
 
-    # get the render path from current item in the output path parm menu
     def _get_render_path(self, node):
+        """Get render path from current item in the output path parm menu.
+
+        :param hou.Node node: The node being acted upon.
+
+        """
+
         output_parm = node.parm(self.NODE_OUTPUT_PATH_PARM)
         return output_parm.unexpandedString()
 
     
-    # returns the files on disk associated with this node
     def _get_rendered_files(self, node):
+        """Returns the files on disk associated with this node.
+
+        :param hou.Node node: The node being acted upon.
+
+        """
 
         file_name = self._get_render_path(node)
         output_profile = self._get_output_profile(node)
