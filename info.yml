@@ -1,11 +1,11 @@
-# Copyright (c) 2013 Shotgun Software Inc.
-# 
+# Copyright (c) 2015 Shotgun Software Inc.
+#
 # CONFIDENTIAL AND PROPRIETARY
-# 
-# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit 
+#
+# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit
 # Source Code License included in this distribution package. See LICENSE.
-# By accessing, using, copying or modifying this work you indicate your 
-# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights 
+# By accessing, using, copying or modifying this work you indicate your
+# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 # ----------------------------------------------------
 #
@@ -13,35 +13,91 @@
 
 # expected fields in the configuration file for this app
 configuration:
-    name:
+
+    default_node_name:
         type: str
         description: >
-            A human readable name to display in the HDA to allow selection of this
-            set of configuration options in Houdini.
+            A default name for Alembic output nodes created in houdini.
+            Allowed characters include letters, numbers, periods, dashes, or
+            underscores.
+        default_value: sgtk_alembic
 
     work_file_template:
         type: template
         description: >
-            A reference to a template which locates a Houdini work file on disk.
-            This is used to drive the version and optionally the name of output files.
-        required_fields: [version]
-        optional_fields: [name]
+            A reference to a template which locates a Houdini work file on
+            disk.  This is used to drive the version and optionally the name of
+            output files.
+        fields: context, version, [name]
 
-    work_render_template:
-        type: template
+    output_profiles:
+        type: list
         description: >
-            A reference to a template which locates a Houdini work render on disk.
-            This template must include the version and extension tokens where the extension
-            token will be replaced with a string representing the extension of the file format
-            selected in Houdini for output. The node token is optional and is the name
-            of the Houdini output node.
-        required_fields: [version,SEQ]
-        optional_fields: [name,node,width,height]
+            A list of dictionaries defining the various mantra output profiles.
+            Each profile contains a unique name that describes the profile, the
+            cach template for writing to disk, a color to distinguish each
+            profile type in the node graph, and optional settings to apply to
+            the internal mantra node.
+        allows_empty: False
+            
+        values: 
+            type: dict
+            description: > 
+                An output profile dictionary that defines how the Tk Mantra
+                node should look in houdini and where it should write images.
+            items:
+                name:
+                    type: str
+                    description: >
+                        A human readable name describing this output profile.
+
+                settings:
+                    type: dict
+                    description: >
+                        A dictionary of settings to apply to the internal
+                        Mantra node when this profile is selected.
+
+                color:
+                    type: list     
+                    description: >
+                        Specify a list of 3 values in the range 0-255 that
+                        represent the RGB values to be set for the node
+                        background/tile_color in the node graph when this
+                        profile is used. Specify an empty list to use the
+                        default colour.
+                    values:
+                        type: int
+                    allows_empty: True
+                    default_value: []
+
+                output_render_template:
+                    type: template
+                    description: > 
+                        Primary mantra render output path template name.
+                    fields: context, version, SEQ, [aov_name], [name], [width], [height], [eye], *
+
+                output_ifd_template:
+                    type: template
+                    description: IFD output path template name.
+                    fields: context, version, [SEQ], [aov_name], [name], [width], [height], [eye], *
+
+                output_dcm_template:
+                    type: template
+                    description: Deep Camera Map output path template name.
+                    fields: context, version, [SEQ], [aov_name], [name], [width], [height], [eye], *
+
+                output_extra_plane_template:
+                    type: template
+                    description: >
+                        Extra image plane (deep rasters) output path template
+                        name.
+                    fields: context, version, SEQ, [aov_name], [name], [width], [height], [eye], *
+
 
 # the Shotgun fields that this app needs in order to operate correctly
 requires_shotgun_fields:
 
-# More verbose description of this item 
+# More verbose description of this item
 display_name: "Mantra Render Output Node"
 description: "Support for the Toolkit Mantra render output node in Houdini."
 
@@ -54,4 +110,4 @@ requires_engine_version: "v0.2.0"
 supported_engines: [tk-houdini]
 
 # the frameworks required to run this app
-frameworks: 
+frameworks:
