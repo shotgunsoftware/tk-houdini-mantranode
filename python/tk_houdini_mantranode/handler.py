@@ -320,7 +320,7 @@ class TkMantraNodeHandler(object):
 
         # see if the hip file has changed
         hip_path_changed = (
-            hou.hipFile.path() == node.parm(self.TK_HIP_PATH_PARM_NAME).eval())
+            hou.hipFile.path() != node.parm(self.TK_HIP_PATH_PARM_NAME).eval())
 
         if is_first_run or hip_path_changed:
             # make sure node is in default state.

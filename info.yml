@@ -17,10 +17,10 @@ configuration:
     default_node_name:
         type: str
         description: >
-            A default name for Alembic output nodes created in houdini.
+            A default name for Mantra output nodes created in houdini.
             Allowed characters include letters, numbers, periods, dashes, or
             underscores.
-        default_value: sgtk_alembic
+        default_value: sgtk_mantra
 
     work_file_template:
         type: template
