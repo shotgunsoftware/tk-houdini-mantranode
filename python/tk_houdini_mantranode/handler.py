@@ -144,7 +144,7 @@ class TkMantraNodeHandler(object):
             # explicitly copy AOV settings to the new tk mantra node
             plane_numbers = _get_extra_plane_numbers(mantra_node)
             for plane_number in plane_numbers:
-                plane_parm_name = self.TK_EXTRA_PLANES_NAME % (plane_number,)
+                plane_parm_name = cls.TK_EXTRA_PLANES_NAME % (plane_number,)
                 aov_name = user_dict.get(plane_parm_name)
                 tk_mantra_node.parm(plane_parm_name).set(aov_name)
 
@@ -215,7 +215,7 @@ class TkMantraNodeHandler(object):
             # store AOV info on the new node
             plane_numbers = _get_extra_plane_numbers(tk_mantra_node)
             for plane_number in plane_numbers:
-                plane_parm_name = self.TK_EXTRA_PLANES_NAME % (plane_number,)
+                plane_parm_name = cls.TK_EXTRA_PLANES_NAME % (plane_number,)
                 mantra_node.setUserData(plane_parm_name,
                     tk_mantra_node.parm(plane_parm_name).eval())
 
