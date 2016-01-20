@@ -40,7 +40,7 @@ class TkMantraNodeHandler(object):
     }
     """Maps additional plane parameter names to output template names"""
 
-    TK_EXTRA_PLANES_NAME = "sgtk_aov_name_%s"
+    TK_EXTRA_PLANES_NAME = "sgtk_aov_name%s"
     """Placeholder used to format extra plane names"""
 
     TK_INIT_PARM_NAME = "sgtk_initialized"
@@ -191,7 +191,6 @@ class TkMantraNodeHandler(object):
             return
 
         for tk_mantra_node in tk_mantra_nodes:
-
 
             # create a new, regular Mantra node
             mantra_node = tk_mantra_node.parent().createNode(
@@ -364,12 +363,17 @@ class TkMantraNodeHandler(object):
         # Extra Image Planes / AOVs
         plane_numbers = _get_extra_plane_numbers(node)
         for plane_number in plane_numbers:
-            for (parm_name, template_name) in \
-                self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
-                parm_name = parm_name.replace("#", str(plane_number))
-                aov_name = node.parm(
-                    self.TK_EXTRA_PLANES_NAME % (plane_number,)).eval()
-                self._compute_and_set(node, parm_name, template_name, aov_name)
+            usefile_parm = node.parm("vm_usefile_plane%s" % (plane_number,)) 
+
+            # only compute the template path if plane is using a different file
+            if usefile_parm.eval():
+                for (parm_name, template_name) in \
+                    self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
+                    parm_name = parm_name.replace("#", str(plane_number))
+                    aov_name = node.parm(
+                        self.TK_EXTRA_PLANES_NAME % (plane_number,)).eval()
+                    self._compute_and_set(node, parm_name, template_name,
+                        aov_name)
 
         # set the output paths
         path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
@@ -517,14 +521,11 @@ class TkMantraNodeHandler(object):
         # handle additional planes
         plane_numbers = _get_extra_plane_numbers(node)
         for plane_number in plane_numbers:
-            for parm1, parm2 in \
-                self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
-                parm1 = parm1.replace("#", str(plane_number))
-                parm2 = parm2.replace("#", str(plane_number))
-                copy_parm(parm1, parm2)
-
+            parm1 = "sgtk_vm_filename_plane" + str(plane_number)
+            parm2 = "vm_filename_plane" + str(plane_number)
+            copy_parm(parm1, parm2)
     
-    def use_file_plane(self, node, parm):
+    def use_file_plane(self, **kwargs):
         """Callback for "Different File" checkbox on every Extra Image Plane.
 
         :param hou.Node node: The node being acted upon.
@@ -536,6 +537,9 @@ class TkMantraNodeHandler(object):
 
         """
 
+        node = kwargs["node"]
+        parm = kwargs["parm"]
+    
         # replace the parm basename with nothing, leaving the plane number
         plane_number = parm.name().replace("vm_usefile_plane", "")
 
@@ -552,7 +556,7 @@ class TkMantraNodeHandler(object):
             path_parm.lock(False)
             path_parm.set("Disabled")
             path_parm.lock(True)
-            path_node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set("")
+            node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set("")
 
 
     ############################################################################
