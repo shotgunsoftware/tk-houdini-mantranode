@@ -498,6 +498,11 @@ class TkMantraNodeHandler(object):
         # make sure the render paths are in default state
         self.reset_render_path(node)
 
+        try:
+            self._app.log_metric("Create", log_version=True)
+        except:
+            # ingore any errors. ex: metrics logging not supported
+            pass
 
     def update_parms(self, node=None):
         """Update a set of predefined parameters as the render path changes.
