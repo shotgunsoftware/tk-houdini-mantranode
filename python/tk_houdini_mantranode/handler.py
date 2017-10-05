@@ -240,6 +240,25 @@ class TkMantraNodeHandler(object):
             app.log_debug("Converted: Tk Mantra node '%s' to Mantra node."
                 % (tk_mantra_node_name,))
 
+    @classmethod
+    def get_all_tk_mantra_nodes(cls):
+        """
+        Returns a list of all tk-houdini-alembic node instances in the current
+        session.
+        """
+
+        # get all instances of tk mantra nodes
+        tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
+        return hou.nodeType(hou.ropNodeTypeCategory(), tk_node_type).instances()
+
+    @classmethod
+    def get_output_path(cls, node):
+        """
+        Returns the evaluated output path for the supplied node.
+        """
+
+        output_parm = node.parm(cls.NODE_OUTPUT_PATH_PARM)
+        return output_parm.unexpandedString()
 
     ############################################################################
     # Instance methods

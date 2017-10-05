@@ -67,4 +67,41 @@ class TkMantraNodeApp(sgtk.platform.Application):
         tk_houdini_mantra.TkMantraNodeHandler.\
             convert_back_to_tk_mantra_nodes(self)
 
+    def get_nodes(self):
+        """
+        Returns a list of hou.node objects for each tk mantra node.
+
+        Example usage::
+
+        >>> import sgtk
+        >>> eng = sgtk.platform.current_engine()
+        >>> app = eng.apps["tk-houdini-mantranode"]
+        >>> tk_mantra_nodes = app.get_nodes()
+        """
+
+        self.log_debug("Retrieving tk-houdini-mantra nodes...")
+        tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
+        nodes = tk_houdini_mantra.TkMantraNodeHandler.\
+            get_all_tk_mantra_nodes()
+        self.log_debug("Found %s tk-houdini-mantra nodes." % (len(nodes),))
+        return nodes
+
+    def get_output_path(self, node):
+        """
+        Returns the evaluated output path for the supplied node.
+
+        Example usage::
+
+        >>> import sgtk
+        >>> eng = sgtk.platform.current_engine()
+        >>> app = eng.apps["tk-houdini-mantranode"]
+        >>> output_path = app.get_output_path(tk_mantra_node)
+        """
+
+        self.log_debug("Retrieving output path for %s" % (node,))
+        tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
+        output_path = tk_houdini_mantra.TkMantraNodeHandler.\
+            get_output_path(node)
+        self.log_debug("Retrieved output path: %s" % (output_path,))
+        return output_path
 
