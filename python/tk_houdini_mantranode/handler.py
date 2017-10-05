@@ -243,7 +243,7 @@ class TkMantraNodeHandler(object):
     @classmethod
     def get_all_tk_mantra_nodes(cls):
         """
-        Returns a list of all tk-houdini-alembic node instances in the current
+        Returns a list of all tk-houdini-mantranode instances in the current
         session.
         """
 
