@@ -105,3 +105,9 @@ class TkMantraNodeApp(sgtk.platform.Application):
         self.log_debug("Retrieved output path: %s" % (output_path,))
         return output_path
 
+    def get_work_file_template(self):
+        """
+        Returns the configured work file template for the app.
+        """
+
+        return self.get_template("work_file_template")
