@@ -258,7 +258,7 @@ class TkMantraNodeHandler(object):
         """
 
         output_parm = node.parm(cls.NODE_OUTPUT_PATH_PARM)
-        return output_parm.unexpandedString()
+        return output_parm.eval()
 
     ############################################################################
     # Instance methods
