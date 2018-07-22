@@ -797,7 +797,7 @@ def _copy_parm_values(source_node, target_node, excludes=None):
                 try:
                     target_parm.set(source_parm.eval())
                 except TypeError:
-                    # The pre- and post-script type comboboxes changed in sometime around
+                    # The pre- and post-script type comboboxes changed sometime around
                     # 16.5.439 to being string type parms that take the name of the language
                     # (hscript or python) instead of an integer index of the combobox item
                     # that's selected. To support both, we try the old way (which is how our
