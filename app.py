@@ -27,7 +27,7 @@ class TkMantraNodeApp(sgtk.platform.Application):
     def convert_to_regular_mantra_nodes(self):
         """Convert Toolkit Mantra nodes to regular Mantra nodes.
 
-        Convert all Tooklit Mantra nodes found in the current script to 
+        Convert all Tooklit Mantra nodes found in the current script to
         regular Mantra nodes. Additional Toolkit information will be stored in
         user data named 'tk_*'
 
@@ -40,11 +40,9 @@ class TkMantraNodeApp(sgtk.platform.Application):
 
         """
 
-        self.log_debug(
-            "Converting Toolkit Mantra nodes to built-in Mantra nodes.")
+        self.log_debug("Converting Toolkit Mantra nodes to built-in Mantra nodes.")
         tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
-        tk_houdini_mantra.TkMantraNodeHandler.\
-            convert_to_regular_mantra_nodes(self)
+        tk_houdini_mantra.TkMantraNodeHandler.convert_to_regular_mantra_nodes(self)
 
     def convert_back_to_tk_mantra_nodes(self):
         """Convert regular Mantra nodes back to Toolkit Mantra nodes.
@@ -61,11 +59,9 @@ class TkMantraNodeApp(sgtk.platform.Application):
 
         """
 
-        self.log_debug(
-            "Converting built-in Mantra nodes back to Toolkit Mantra nodes.")
+        self.log_debug("Converting built-in Mantra nodes back to Toolkit Mantra nodes.")
         tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
-        tk_houdini_mantra.TkMantraNodeHandler.\
-            convert_back_to_tk_mantra_nodes(self)
+        tk_houdini_mantra.TkMantraNodeHandler.convert_back_to_tk_mantra_nodes(self)
 
     def get_nodes(self):
         """
@@ -81,8 +77,7 @@ class TkMantraNodeApp(sgtk.platform.Application):
 
         self.log_debug("Retrieving tk-houdini-mantra nodes...")
         tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
-        nodes = tk_houdini_mantra.TkMantraNodeHandler.\
-            get_all_tk_mantra_nodes()
+        nodes = tk_houdini_mantra.TkMantraNodeHandler.get_all_tk_mantra_nodes()
         self.log_debug("Found %s tk-houdini-mantra nodes." % (len(nodes),))
         return nodes
 
@@ -100,8 +95,7 @@ class TkMantraNodeApp(sgtk.platform.Application):
 
         self.log_debug("Retrieving output path for %s" % (node,))
         tk_houdini_mantra = self.import_module("tk_houdini_mantranode")
-        output_path = tk_houdini_mantra.TkMantraNodeHandler.\
-            get_output_path(node)
+        output_path = tk_houdini_mantra.TkMantraNodeHandler.get_output_path(node)
         self.log_debug("Retrieved output path: %s" % (output_path,))
         return output_path
 
