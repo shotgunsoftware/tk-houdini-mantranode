@@ -39,10 +39,10 @@ configuration:
             profile type in the node graph, and optional settings to apply to
             the internal mantra node.
         allows_empty: False
-            
-        values: 
+
+        values:
             type: dict
-            description: > 
+            description: >
                 An output profile dictionary that defines how the Tk Mantra
                 node should look in houdini and where it should write images.
             items:
@@ -58,7 +58,7 @@ configuration:
                         Mantra node when this profile is selected.
 
                 color:
-                    type: list     
+                    type: list
                     description: >
                         Specify a list of 3 values in the range 0.0-1.0 that
                         represent the RGB values to be set for the node
@@ -72,7 +72,7 @@ configuration:
 
                 output_render_template:
                     type: template
-                    description: > 
+                    description: >
                         Primary mantra render output path template name.
                     fields: context, version, SEQ, [aov_name], [name], [width], [height], [eye], *
 

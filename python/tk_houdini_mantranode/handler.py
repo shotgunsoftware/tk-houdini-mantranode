@@ -25,7 +25,7 @@ class TkMantraNodeHandler(object):
     ############################################################################
     # Class data
 
-    # mostly a collection of strings that are reused throughout the handler.  
+    # mostly a collection of strings that are reused throughout the handler.
 
     HOU_MANTRA_NODE_TYPE = "ifd"
     """Houdini type for mantra node."""
@@ -52,7 +52,7 @@ class TkMantraNodeHandler(object):
     TK_MANTRA_NODE_TYPE = "sgtk_mantra"
     """The clase of node as defined in Houdini for the Mantra nodes."""
 
-    TK_OUTPUT_PROFILE_PARM = "sgtk_output_profile" 
+    TK_OUTPUT_PROFILE_PARM = "sgtk_output_profile"
     """The name of the parameter that stores the current output profile."""
 
     TK_OUTPUT_PROFILE_NAME_KEY = "tk_output_profile_name"
@@ -75,7 +75,7 @@ class TkMantraNodeHandler(object):
     ]
     """The default parameters to reset when the profile changes."""
 
-    TK_DEFAULT_UPDATE_PARM_MAPPING = {     
+    TK_DEFAULT_UPDATE_PARM_MAPPING = {
         "sgtk_soho_diskfile": "soho_diskfile",
         "sgtk_vm_dcmfilename": "vm_dcmfilename",
         "sgtk_vm_picture": "vm_picture",
@@ -98,12 +98,13 @@ class TkMantraNodeHandler(object):
 
         # get all instances of the built-in mantra nodes
         mantra_nodes = hou.nodeType(
-            hou.ropNodeTypeCategory(), cls.HOU_MANTRA_NODE_TYPE).instances()
+            hou.ropNodeTypeCategory(), cls.HOU_MANTRA_NODE_TYPE
+        ).instances()
 
         if not mantra_nodes:
             app.log_debug("No Mantra Nodes found for conversion.")
             return
-        
+
         # iterate over all the mantra nodes and attempt to convert them
         for mantra_node in mantra_nodes:
 
@@ -111,14 +112,13 @@ class TkMantraNodeHandler(object):
             user_dict = mantra_node.userDataDict()
 
             # get the output_profile from the dictionary
-            tk_output_profile_name = user_dict.get(
-                cls.TK_OUTPUT_PROFILE_NAME_KEY)
+            tk_output_profile_name = user_dict.get(cls.TK_OUTPUT_PROFILE_NAME_KEY)
 
             if not tk_output_profile_name:
                 app.log_warning(
                     "Mantra node '%s' does not have an output profile name. "
-                    "Can't convert to Tk Mantra node. Continuing." %
-                    (mantra_node.name(),)
+                    "Can't convert to Tk Mantra node. Continuing."
+                    % (mantra_node.name(),)
                 )
                 continue
 
@@ -130,15 +130,18 @@ class TkMantraNodeHandler(object):
             # and set that item in the menu.
             try:
                 output_profile_parm = tk_mantra_node.parm(
-                    TkMantraNodeHandler.TK_OUTPUT_PROFILE_PARM)
+                    TkMantraNodeHandler.TK_OUTPUT_PROFILE_PARM
+                )
                 output_profile_index = output_profile_parm.menuLabels().index(
-                    tk_output_profile_name)
+                    tk_output_profile_name
+                )
                 output_profile_parm.set(output_profile_index)
             except ValueError:
-                app.log_warning("No output profile found named: %s" % 
-                    (tk_output_profile_name,))
+                app.log_warning(
+                    "No output profile found named: %s" % (tk_output_profile_name,)
+                )
 
-            # copy over all parameter values except the output path 
+            # copy over all parameter values except the output path
             _copy_parm_values(mantra_node, tk_mantra_node, excludes=[])
 
             # explicitly copy AOV settings to the new tk mantra node
@@ -152,7 +155,7 @@ class TkMantraNodeHandler(object):
             _copy_inputs(mantra_node, tk_mantra_node)
             _move_outputs(mantra_node, tk_mantra_node)
 
-            # make the new node the same color. the profile will set a color, 
+            # make the new node the same color. the profile will set a color,
             # but do this just in case the user changed the color manually
             # prior to the conversion.
             tk_mantra_node.setColor(mantra_node.color())
@@ -169,9 +172,9 @@ class TkMantraNodeHandler(object):
             tk_mantra_node.setName(mantra_node_name)
             tk_mantra_node.setPosition(mantra_node_pos)
 
-            app.log_debug("Converted: Mantra node '%s' to TK Mantra node."
-                % (mantra_node_name,))
-
+            app.log_debug(
+                "Converted: Mantra node '%s' to TK Mantra node." % (mantra_node_name,)
+            )
 
     @classmethod
     def convert_to_regular_mantra_nodes(cls, app):
@@ -184,7 +187,8 @@ class TkMantraNodeHandler(object):
         # get all instances of tk mantra nodes
         tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
         tk_mantra_nodes = hou.nodeType(
-            hou.ropNodeTypeCategory(), tk_node_type).instances()
+            hou.ropNodeTypeCategory(), tk_node_type
+        ).instances()
 
         if not tk_mantra_nodes:
             app.log_debug("No Toolkit Mantra Nodes found for conversion.")
@@ -193,30 +197,33 @@ class TkMantraNodeHandler(object):
         for tk_mantra_node in tk_mantra_nodes:
 
             # create a new, regular Mantra node
-            mantra_node = tk_mantra_node.parent().createNode(
-                cls.HOU_MANTRA_NODE_TYPE)
+            mantra_node = tk_mantra_node.parent().createNode(cls.HOU_MANTRA_NODE_TYPE)
 
             # copy across knob values
-            exclude_parms = [parm for parm in tk_mantra_node.parms() 
-                if parm.name().startswith("sgtk_")]
-            _copy_parm_values(tk_mantra_node, mantra_node,
-                excludes=exclude_parms)
+            exclude_parms = [
+                parm
+                for parm in tk_mantra_node.parms()
+                if parm.name().startswith("sgtk_")
+            ]
+            _copy_parm_values(tk_mantra_node, mantra_node, excludes=exclude_parms)
 
             # store the mantra output profile name in the user data so that we
             # can retrieve it later.
-            output_profile_parm = tk_mantra_node.parm(
-                cls.TK_OUTPUT_PROFILE_PARM)
-            tk_output_profile_name = \
-                output_profile_parm.menuLabels()[output_profile_parm.eval()]
-            mantra_node.setUserData(cls.TK_OUTPUT_PROFILE_NAME_KEY, 
-                tk_output_profile_name)
+            output_profile_parm = tk_mantra_node.parm(cls.TK_OUTPUT_PROFILE_PARM)
+            tk_output_profile_name = output_profile_parm.menuLabels()[
+                output_profile_parm.eval()
+            ]
+            mantra_node.setUserData(
+                cls.TK_OUTPUT_PROFILE_NAME_KEY, tk_output_profile_name
+            )
 
             # store AOV info on the new node
             plane_numbers = _get_extra_plane_numbers(tk_mantra_node)
             for plane_number in plane_numbers:
                 plane_parm_name = cls.TK_EXTRA_PLANES_NAME % (plane_number,)
-                mantra_node.setUserData(plane_parm_name,
-                    tk_mantra_node.parm(plane_parm_name).eval())
+                mantra_node.setUserData(
+                    plane_parm_name, tk_mantra_node.parm(plane_parm_name).eval()
+                )
 
             # copy the inputs and move the outputs
             _copy_inputs(tk_mantra_node, mantra_node)
@@ -237,8 +244,10 @@ class TkMantraNodeHandler(object):
             mantra_node.setName(tk_mantra_node_name)
             mantra_node.setPosition(tk_mantra_node_pos)
 
-            app.log_debug("Converted: Tk Mantra node '%s' to Mantra node."
-                % (tk_mantra_node_name,))
+            app.log_debug(
+                "Converted: Tk Mantra node '%s' to Mantra node."
+                % (tk_mantra_node_name,)
+            )
 
     @classmethod
     def get_all_tk_mantra_nodes(cls):
@@ -265,9 +274,9 @@ class TkMantraNodeHandler(object):
 
     def __init__(self, app):
         """Initialize the handler.
-        
-        :params app: The application instance. 
-        
+
+        :params app: The application instance.
+
         """
 
         # keep a reference to the app for easy access to templates, settings,
@@ -282,15 +291,15 @@ class TkMantraNodeHandler(object):
             if output_profile_name in self._output_profiles:
                 self._app.log_warning(
                     "Found multiple output profiles named '%s' for the "
-                    "Tk Mantra node! Only the first one will be available." %
-                    (output_profile_name,)
+                    "Tk Mantra node! Only the first one will be available."
+                    % (output_profile_name,)
                 )
                 continue
 
             self._output_profiles[output_profile_name] = output_profile
-            self._app.log_debug("Caching mantra output profile: '%s'" % 
-                (output_profile_name,))
-
+            self._app.log_debug(
+                "Caching mantra output profile: '%s'" % (output_profile_name,)
+            )
 
     ############################################################################
     # methods and callbacks executed via the OTL
@@ -302,10 +311,10 @@ class TkMantraNodeHandler(object):
 
         # use Qt to copy the path to the clipboard:
         from sgtk.platform.qt import QtGui
+
         QtGui.QApplication.clipboard().setText(render_path)
 
-        self._app.log_debug(
-            "Copied render path to clipboard: %s" % (render_path,))
+        self._app.log_debug("Copied render path to clipboard: %s" % (render_path,))
 
     def get_output_profile_menu_labels(self):
         """Returns labels for all tk-houdini-mantranode output profiles."""
@@ -316,29 +325,29 @@ class TkMantraNodeHandler(object):
 
         return menu_labels
 
-
     def get_output_path_menu(self, node=None):
         """Returns a list of output path menu items for the current node.
-        
+
         :param hou.Node node: The node being acted upon.
 
         :return: The menu of the form [menu_id, display, menu_id, display, ...]
         :rtype: list of str
-        
+
         """
 
         if not None:
             node = hou.pwd()
 
         # is this the first time this has been created?
-        is_first_run = (node.parm(self.TK_INIT_PARM_NAME).eval() == "True")
+        is_first_run = node.parm(self.TK_INIT_PARM_NAME).eval() == "True"
         if is_first_run:
             # set it to false for subsequent calls
             node.parm(is_first_run).set("False")
 
         # see if the hip file has changed
         hip_path_changed = (
-            hou.hipFile.path() != node.parm(self.TK_HIP_PATH_PARM_NAME).eval())
+            hou.hipFile.path() != node.parm(self.TK_HIP_PATH_PARM_NAME).eval()
+        )
 
         if is_first_run or hip_path_changed:
             # make sure node is in default state.
@@ -351,18 +360,22 @@ class TkMantraNodeHandler(object):
         path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
 
         # Build the menu
-        menu = ["sgtk", path,
-                "ip", "mplay (interactive)",
-                "md", "mplay (non-interactive)"]
+        menu = [
+            "sgtk",
+            path,
+            "ip",
+            "mplay (interactive)",
+            "md",
+            "mplay (non-interactive)",
+        ]
 
         return menu
 
-
     def reset_render_path(self, node=None):
-        """Reset the render path of the specified node. 
+        """Reset the render path of the specified node.
 
         :param hou.Node node: The node being acted upon.
-        
+
         This will force the render path to be updated based on the current
         script path and configuraton.
         """
@@ -375,24 +388,25 @@ class TkMantraNodeHandler(object):
         if node.name().startswith("original0"):
             return
 
-        for (parm_name, template_name) in \
-            self.TK_RENDER_TEMPLATE_MAPPING.items():
+        for (parm_name, template_name) in self.TK_RENDER_TEMPLATE_MAPPING.items():
             self._compute_and_set(node, parm_name, template_name)
 
         # Extra Image Planes / AOVs
         plane_numbers = _get_extra_plane_numbers(node)
         for plane_number in plane_numbers:
-            usefile_parm = node.parm("vm_usefile_plane%s" % (plane_number,)) 
+            usefile_parm = node.parm("vm_usefile_plane%s" % (plane_number,))
 
             # only compute the template path if plane is using a different file
             if usefile_parm.eval():
-                for (parm_name, template_name) in \
-                    self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
+                for (
+                    parm_name,
+                    template_name,
+                ) in self.TK_EXTRA_PLANE_TEMPLATE_MAPPING.items():
                     parm_name = parm_name.replace("#", str(plane_number))
                     aov_name = node.parm(
-                        self.TK_EXTRA_PLANES_NAME % (plane_number,)).eval()
-                    self._compute_and_set(node, parm_name, template_name,
-                        aov_name)
+                        self.TK_EXTRA_PLANES_NAME % (plane_number,)
+                    ).eval()
+                    self._compute_and_set(node, parm_name, template_name, aov_name)
 
         # set the output paths
         path = node.parm(self.NODE_OUTPUT_PATH_PARM).unexpandedString()
@@ -401,14 +415,13 @@ class TkMantraNodeHandler(object):
 
         self.update_parms(node)
 
-
     def set_profile(self, node=None, reset=False):
         """Apply the selected profile in the session.
-        
+
         :param hou.Node node: The node being acted upon.
         :param bool reset: When True, reset predefined param to defaults.
             Includes TK_RESET_PARM_NAMES parms as well as node color.
-        
+
         """
 
         if not node:
@@ -416,8 +429,9 @@ class TkMantraNodeHandler(object):
 
         output_profile = self._get_output_profile(node)
 
-        self._app.log_debug("Applying tk mantra node profile: %s" % 
-            (output_profile["name"],))
+        self._app.log_debug(
+            "Applying tk mantra node profile: %s" % (output_profile["name"],)
+        )
 
         # reset some parameters if need be
         if reset:
@@ -426,7 +440,7 @@ class TkMantraNodeHandler(object):
                 if parm:
                     parm.revertToDefaults()
 
-            node.setColor(hou.Color([.8, .8, .8]))
+            node.setColor(hou.Color([0.8, 0.8, 0.8]))
 
         # apply the supplied settings to the node
         settings = output_profile["settings"]
@@ -440,7 +454,6 @@ class TkMantraNodeHandler(object):
             node.setColor(hou.Color(color))
 
         self.reset_render_path(node)
-
 
     def show_in_fs(self):
         """Open a file browser showing the render path of the current node."""
@@ -470,8 +483,7 @@ class TkMantraNodeHandler(object):
             rendered_files = self._get_rendered_files(current_node)
 
             if not rendered_files:
-                msg = ("Unable to find rendered files for node '%s'." 
-                       % (current_node,))
+                msg = "Unable to find rendered files for node '%s'." % (current_node,)
                 self._app.log_error(msg)
                 hou.ui.displayMessage(msg)
                 return
@@ -485,11 +497,11 @@ class TkMantraNodeHandler(object):
 
             # run the app
             if system == "linux2":
-                cmd = "xdg-open \"%s\"" % render_dir
+                cmd = 'xdg-open "%s"' % render_dir
             elif system == "darwin":
                 cmd = "open '%s'" % render_dir
             elif system == "win32":
-                cmd = "cmd.exe /C start \"Folder\" \"%s\"" % render_dir
+                cmd = 'cmd.exe /C start "Folder" "%s"' % render_dir
             else:
                 msg = "Platform '%s' is not supported." % (system,)
                 self._app.log_error(msg)
@@ -503,11 +515,11 @@ class TkMantraNodeHandler(object):
 
     def setup_node(self, node):
         """Setup newly created node with default name, profile, settings.
-        
+
         :param hou.Node node: The node being acted upon.
-        
+
         """
-        
+
         default_name = self._app.get_setting("default_node_name")
         node.setName(default_name, unique_name=True)
 
@@ -525,18 +537,17 @@ class TkMantraNodeHandler(object):
 
     def update_parms(self, node=None):
         """Update a set of predefined parameters as the render path changes.
-        
+
         :param hou.Node node: The node being acted upon.
-        
-        
+
+
         """
 
         if not node:
             node = hou.pwd()
 
         # copies the value of one parm to another
-        copy_parm = lambda p1, p2: \
-            node.parm(p2).set(node.parm(p1).unexpandedString())
+        copy_parm = lambda p1, p2: node.parm(p2).set(node.parm(p1).unexpandedString())
 
         # copy the default udpate parms
         for parm1, parm2 in self.TK_DEFAULT_UPDATE_PARM_MAPPING.items():
@@ -548,13 +559,13 @@ class TkMantraNodeHandler(object):
             parm1 = "sgtk_vm_filename_plane" + str(plane_number)
             parm2 = "vm_filename_plane" + str(plane_number)
             copy_parm(parm1, parm2)
-    
+
     def use_file_plane(self, **kwargs):
         """Callback for "Different File" checkbox on every Extra Image Plane.
 
         :param hou.Node node: The node being acted upon.
         :param hou.Parm parm: The checkbox parm for turning the option on/off.
-        
+
         Sets the AOV Name to Channel Name or VEX Variable.  Resets the render
         paths to update the path for this AOV.  Sets the Label to "Disabled."
         when it is unchecked.
@@ -563,7 +574,7 @@ class TkMantraNodeHandler(object):
 
         node = kwargs["node"]
         parm = kwargs["parm"]
-    
+
         # replace the parm basename with nothing, leaving the plane number
         plane_number = parm.name().replace("vm_usefile_plane", "")
 
@@ -571,8 +582,7 @@ class TkMantraNodeHandler(object):
 
             value = node.parm("vm_channel_plane%s" % (plane_number,)).eval()
             if not value:
-                value = node.parm(
-                    "vm_variable_plane%s" % (plane_number,)).eval()
+                value = node.parm("vm_variable_plane%s" % (plane_number,)).eval()
             node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set(value)
             self.reset_render_path(node)
         else:
@@ -582,18 +592,17 @@ class TkMantraNodeHandler(object):
             path_parm.lock(True)
             node.parm(self.TK_EXTRA_PLANES_NAME % (plane_number,)).set("")
 
-
     ############################################################################
     # Private methods
 
     def _compute_and_set(self, node, parm_name, template_name, aov_name=None):
         """Compute and set and output path for the supplied parm.
-        
+
         :param hou.Node node: The node being acted upon.
         :param str parm_name: The name of the parameter to set.
         :param str template_name: The template to compute as the output path.
         :param str aov_name: Optional AOV name used during comput of path.
-        
+
         """
 
         try:
@@ -606,7 +615,6 @@ class TkMantraNodeHandler(object):
         node.parm(parm_name).lock(False)
         node.parm(parm_name).set(path)
         node.parm(parm_name).lock(True)
-
 
     def _compute_output_path(self, node, template_name, aov_name=None):
         """Compute output path based on current work file and render template.
@@ -627,8 +635,7 @@ class TkMantraNodeHandler(object):
         output_profile = self._get_output_profile(node)
 
         # Get the render template from the app
-        output_template = self._app.get_template_by_name(
-            output_profile[template_name])
+        output_template = self._app.get_template_by_name(output_profile[template_name])
 
         # create fields dict with all the metadata
         fields = {
@@ -637,7 +644,7 @@ class TkMantraNodeHandler(object):
             "renderpass": node.name(),
             "SEQ": "FORMAT: $F",
             "version": work_file_fields.get("version", None),
-        } 
+        }
 
         # use %V - full view printout as default for the eye field
         fields["eye"] = "%V"
@@ -658,22 +665,21 @@ class TkMantraNodeHandler(object):
 
         return path
 
-
     def _get_output_profile(self, node=None):
         """Get the current output profile.
-        
+
         :param hou.Node node: The node being acted upon.
-        
+
         """
 
         if not node:
             node = hou.pwd()
 
         output_profile_parm = node.parm(self.TK_OUTPUT_PROFILE_PARM)
-        output_profile_name = \
-            output_profile_parm.menuLabels()[output_profile_parm.eval()]
+        output_profile_name = output_profile_parm.menuLabels()[
+            output_profile_parm.eval()
+        ]
         return self._output_profiles[output_profile_name]
-
 
     def _get_hipfile_fields(self):
         """Extract fields from current Houdini file using workfile template."""
@@ -682,12 +688,10 @@ class TkMantraNodeHandler(object):
 
         work_fields = {}
         work_file_template = self._app.get_template("work_file_template")
-        if (work_file_template and 
-            work_file_template.validate(current_file_path)):
+        if work_file_template and work_file_template.validate(current_file_path):
             work_fields = work_file_template.get_fields(current_file_path)
 
         return work_fields
-
 
     def _get_render_path(self, node):
         """Get render path from current item in the output path parm menu.
@@ -699,7 +703,6 @@ class TkMantraNodeHandler(object):
         output_parm = node.parm(self.NODE_OUTPUT_PATH_PARM)
         return output_parm.unexpandedString()
 
-    
     def _get_rendered_files(self, node):
         """Returns the files on disk associated with this node.
 
@@ -712,25 +715,29 @@ class TkMantraNodeHandler(object):
 
         # get the output cache template for the current profile
         output_render_template = self._app.get_template_by_name(
-            output_profile["output_render_template"])
+            output_profile["output_render_template"]
+        )
 
         if not output_render_template.validate(file_name):
-            msg = ("Unable to validate files on disk for node %s."
-                   "The path '%s' is not recognized by Shotgun."
-                   % (node.name(), file_name))
+            msg = (
+                "Unable to validate files on disk for node %s."
+                "The path '%s' is not recognized by Shotgun." % (node.name(), file_name)
+            )
             self._app.log_error(msg)
             return []
-            
+
         fields = output_render_template.get_fields(file_name)
 
         # get the actual file paths based on the template. Ignore any sequence
         # or eye fields
         return self._app.tank.paths_from_template(
-            output_render_template, fields, ["SEQ", "eye"])
+            output_render_template, fields, ["SEQ", "eye"]
+        )
 
 
 ################################################################################
 # Utility methods
+
 
 def _copy_inputs(source_node, target_node):
     """Copy all the input connections from this node to the target node.
@@ -748,10 +755,9 @@ def _copy_inputs(source_node, target_node):
             "Not enough inputs on target node. Cannot copy inputs from "
             "'%s' to '%s'" % (source_node, target_node)
         )
-        
+
     for connection in input_connections:
-        target_node.setInput(connection.inputIndex(),
-            connection.inputNode())
+        target_node.setInput(connection.inputIndex(), connection.inputNode())
 
 
 def _copy_parm_values(source_node, target_node, excludes=None):
@@ -767,8 +773,7 @@ def _copy_parm_values(source_node, target_node, excludes=None):
         excludes = []
 
     # build a parameter list from the source node, ignoring the excludes
-    source_parms = [
-        parm for parm in source_node.parms() if parm.name() not in excludes]
+    source_parms = [parm for parm in source_node.parms() if parm.name() not in excludes]
 
     for source_parm in source_parms:
 
@@ -804,21 +809,25 @@ def _copy_parm_values(source_node, target_node, excludes=None):
                     # otl is setup to work), and if that fails we then fall back on mapping
                     # the integer index from our otl's parm over to the string language name
                     # that the mantra node is expecting.
-                    if source_parm.name().startswith("lpre") or source_parm.name().startswith("lpost"):
+                    if source_parm.name().startswith(
+                        "lpre"
+                    ) or source_parm.name().startswith("lpost"):
                         value_map = ["hscript", "python"]
                         target_parm.set(value_map[source_parm.eval()])
                     else:
                         raise
 
+
 def _get_extra_plane_numbers(node):
     """Return a list of aov plane nubmers.
-    
+
     :param hou.Node node: The node being acted upon.
-    
+
     """
 
-    return xrange(1,
-        node.parm(TkMantraNodeHandler.TK_EXTRA_PLANE_COUNT_PARM).eval() + 1)
+    return xrange(
+        1, node.parm(TkMantraNodeHandler.TK_EXTRA_PLANE_COUNT_PARM).eval() + 1
+    )
 
 
 def _get_render_resolution(node):
@@ -862,5 +871,3 @@ def _move_outputs(source_node, target_node):
     for connection in source_node.outputConnections():
         output_node = connection.outputNode()
         output_node.setInput(connection.inputIndex(), target_node)
-
-
