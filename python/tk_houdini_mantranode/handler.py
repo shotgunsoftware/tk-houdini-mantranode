@@ -17,7 +17,6 @@ import hou
 
 # toolkit
 import sgtk
-from six.moves import range
 
 
 class TkMantraNodeHandler(object):
