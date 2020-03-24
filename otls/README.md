@@ -48,6 +48,13 @@ Some nodes shouldn't be copied over as their functionality is handled by sgtk re
    'vm_tmpsharedstorage'
    ```
 
-   Some
+    ![How to access the type parameter Window.](./houdini_parameters.png)
 
-![](./)
+9. Once you've added the new parameters, return to the Python shell and run these two lines.
+    ```python
+    diff = sgtk_mantra_props - mantra_props
+    pprint.pprint(diff)
+    ```
+    This will give you the parameters that are in the sgtk node and not the standard node. You should consider removing any none sgtk nodes.
+
+10. Now you are done, you can accept and apply the changes. Check that the new parameters show up in the node interface and commit your changes. Make sure not to commit the backup otls that Houdini generates.
