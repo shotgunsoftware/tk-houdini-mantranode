@@ -9,7 +9,7 @@ These step will guide you through the process of updating the otl file.
 
 3. Launch Houdini from Shotgun using the Houdini version you wish to check for parameter updates on.
 
-4. Open a new scene on an Shot so that the Mantra node is loaded.
+4. Open a new scene on an Shot so that the Mantra node is loaded using Workfiles.
 
 5. Run the following script in the Houdini Python shell.
     ```python
