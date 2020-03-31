@@ -1,5 +1,5 @@
 [packaging]
 exclude=
     # Remove otl doc files
-    /otls/houdini_parameters.png
-    /otls/README.md
+    otls/houdini_parameters.png
+    otls/README.md
