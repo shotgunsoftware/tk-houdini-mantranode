@@ -7,7 +7,7 @@ These step will guide you through the process of updating the otl file.
 
 2. Duplicate the latest otl version folder, and rename it to match thee version of Houdini you are adding support for. Providing the main version number and x's for the minor and patch should be enough (e.g. "v18.x.x"), unless you discover the need to make a more granular otl version. If it turns out after going through this process that no changes are needed, then discard this new folder and otl.
 
-3. Launch Houdini from Shotgun using the Houdini version you wish to check for parameter updates on.
+3. Launch Houdini from ShotGrid using the Houdini version you wish to check for parameter updates on.
 
 4. Open a new scene on a Shot or an Asset using Workfiles so that the Mantra node is loaded.
 
