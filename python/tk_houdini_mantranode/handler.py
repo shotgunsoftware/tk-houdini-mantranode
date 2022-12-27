@@ -97,16 +97,17 @@ class TkMantraNodeHandler(object):
         """
 
         # get all instances of the built-in mantra nodes
-        mantra_nodes = hou.nodeType(
-            hou.ropNodeTypeCategory(), cls.HOU_MANTRA_NODE_TYPE
-        ).instances()
+        mantra_nodes = hou.nodeType(hou.ropNodeTypeCategory(), cls.HOU_MANTRA_NODE_TYPE)
+
+        if mantra_nodes:
+            tk_mantra_nodes = mantra_nodes.instances()
 
         if not mantra_nodes:
             app.log_debug("No Mantra Nodes found for conversion.")
             return
 
         # iterate over all the mantra nodes and attempt to convert them
-        for mantra_node in mantra_nodes:
+        for mantra_node in tk_mantra_nodes:
 
             # get the user data dictionary stored on the node
             user_dict = mantra_node.userDataDict()
@@ -186,11 +187,13 @@ class TkMantraNodeHandler(object):
 
         # get all instances of tk mantra nodes
         tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
-        tk_mantra_nodes = hou.nodeType(
-            hou.ropNodeTypeCategory(), tk_node_type
-        ).instances()
 
-        if not tk_mantra_nodes:
+        mantra_nodes = hou.nodeType(hou.ropNodeTypeCategory(), tk_node_type)
+
+        if mantra_nodes:
+            tk_mantra_nodes = mantra_nodes.instances()
+
+        if not mantra_nodes:
             app.log_debug("No Toolkit Mantra Nodes found for conversion.")
             return
 
@@ -258,7 +261,9 @@ class TkMantraNodeHandler(object):
 
         # get all instances of tk mantra nodes
         tk_node_type = TkMantraNodeHandler.TK_MANTRA_NODE_TYPE
-        return hou.nodeType(hou.ropNodeTypeCategory(), tk_node_type).instances()
+        mantra_nodes = hou.nodeType(hou.ropNodeTypeCategory(), tk_node_type)
+        if mantra_nodes:
+            return mantra_nodes.instances()
 
     @classmethod
     def get_output_path(cls, node):
