@@ -720,7 +720,7 @@ class TkMantraNodeHandler(object):
         if not output_render_template.validate(file_name):
             msg = (
                 "Unable to validate files on disk for node %s."
-                "The path '%s' is not recognized by ShotGrid."
+                "The path '%s' is not recognized by Flow Production Tracking."
                 % (node.name(), file_name)
             )
             self._app.log_error(msg)
