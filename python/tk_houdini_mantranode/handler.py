@@ -628,7 +628,7 @@ class TkMantraNodeHandler(object):
         work_file_fields = self._get_hipfile_fields()
 
         if not work_file_fields:
-            msg = "This Houdini file is not a SG Toolkit work file!"
+            msg = "This Houdini file is not a Flow Production Tracking work file!"
             raise sgtk.TankError(msg)
 
         output_profile = self._get_output_profile(node)
@@ -720,7 +720,7 @@ class TkMantraNodeHandler(object):
         if not output_render_template.validate(file_name):
             msg = (
                 "Unable to validate files on disk for node %s."
-                "The path '%s' is not recognized by ShotGrid."
+                "The path '%s' is not recognized by Flow Production Tracking."
                 % (node.name(), file_name)
             )
             self._app.log_error(msg)
