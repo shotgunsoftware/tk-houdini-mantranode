@@ -388,7 +388,7 @@ class TkMantraNodeHandler(object):
         if node.name().startswith("original0"):
             return
 
-        for (parm_name, template_name) in self.TK_RENDER_TEMPLATE_MAPPING.items():
+        for parm_name, template_name in self.TK_RENDER_TEMPLATE_MAPPING.items():
             self._compute_and_set(node, parm_name, template_name)
 
         # Extra Image Planes / AOVs
