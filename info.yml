@@ -105,6 +105,7 @@ description: "Support for the Toolkit Mantra render output node in Houdini."
 requires_shotgun_version:
 requires_core_version: "v0.12.5"
 requires_engine_version: "v1.7.1"
+minimum_python_version: "3.9"
 
 # the engines that this app can operate in:
 supported_engines: [tk-houdini]
